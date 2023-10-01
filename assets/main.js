@@ -106,6 +106,7 @@ class Game {
         this.pieces = [];
         this.records = [];
         this.moveCounter = 0;
+        this.gameOver = false;
     }
 
     putPiece(piece) {
@@ -201,6 +202,10 @@ class Game {
         if (index !== -1) {
             console.log('发生吃兵');
             this.pieces.splice(index, 1);
+
+            if (target.role === 'wang') {
+                this.gameOver = true;
+            }
         }
 
         this.records.push(Game.makeStep(find, newX, newY));
@@ -208,6 +213,7 @@ class Game {
         find.x = newX;
         find.y = newY;
 
+        this.moveCounter++;
         return true;
     }
 
@@ -253,6 +259,52 @@ class Game {
             return `${name}${getXforRed(find.x)}${direction}${end}`;
         } else {
             return `${name}${getXforBlack(find.x)}${direction}${end}`;
+        }
+    }
+
+    selectStep(steps) {
+        const index = Math.floor(Math.random() * steps.length);
+        const step = steps[index];
+        this.tryMove([step.piece.x, step.piece.y], step.to);
+    }
+
+    autoMove() {
+        if (this.gameOver) {
+            return;
+        }
+
+        if (this.moveCounter % 2 === 0) {
+            const player = 'red';
+            const redPieces = this.pieces.filter((item) => {
+                return item.player === player;
+            });
+            const all = redPieces.reduceRight((pre, item) => {
+                const steps = this.getAvailableSteps(item.x, item.y).map((step) => {
+                    return {
+                        piece: item,
+                        to: step
+                    };
+                });
+                pre.push(...steps);
+                return pre;
+            }, []);
+            this.selectStep(all);
+        } else {
+            const player = 'black';
+            const redPieces = this.pieces.filter((item) => {
+                return item.player === player;
+            });
+            const all = redPieces.reduceRight((pre, item) => {
+                const steps = this.getAvailableSteps(item.x, item.y).map((step) => {
+                    return {
+                        piece: item,
+                        to: step
+                    };
+                });
+                pre.push(...steps);
+                return pre;
+            }, []);
+            this.selectStep(all);
         }
     }
 
@@ -386,11 +438,19 @@ class Game {
             return;
         }
 
+        if (x < 0 || x > 8) {
+            return;
+        }
+
+        if (y < 0 || y > 9) {
+            return;
+        }
+
         steps.push([x, y]);
     }
 
     getAvailableSteps(x, y) {
-        const steps = [];
+        let steps = [];
         const find = this.find(x, y);
 
         if (!find) {
@@ -541,8 +601,9 @@ class Game {
             this.detect(steps, find.player, x + 1, y);
             this.detect(steps, find.player, x, y + 1);
             this.detect(steps, find.player, x - 1, y);
+
             // 王不出城
-            return steps.filter((item) => {
+            steps = steps.filter((item) => {
                 const [x, y] = item;
                 if (x < 3 || x > 5) {
                     return false;
@@ -560,6 +621,35 @@ class Game {
 
                 return true;
             });
+
+            // 王对王
+            if (find.player === 'red') {
+                for (let i = find.y - 1; i >= 0; i--) {
+                    const point = [find.x, i];
+                    const f = this.find(point[0], point[1]);
+                    if (f) {
+                        if (f.player !== find.player && f.role === 'wang') {
+                            // 找到对方王，添加点
+                            steps.push(point);
+                        }
+                        break;
+                    }
+                }
+            } else {
+                for (let i = find.y + 1; i < 10; i++) {
+                    const point = [find.x, i];
+                    const f = this.find(point[0], point[1]);
+                    if (f) {
+                        if (f.player !== find.player && f.role === 'wang') {
+                            // 找到对方王，添加点
+                            steps.push(point);
+                        }
+                        break;
+                    }
+                }
+            }
+
+            return steps;
         } else if (find.role === 'pao') {
             // 4个方向
 
@@ -758,6 +848,8 @@ class GameRender {
             this.selected = null;
             if (moved) {
                 this.render();
+                // 黑方自动走棋
+                this.move();
             }
         } else {
             if (this.game.find(x, y)) {
@@ -778,14 +870,6 @@ class GameRender {
     }
 
     drawStep(x, y) {
-        if (x > 8) {
-            return;
-        }
-
-        if (y > 9) {
-            return;
-        }
-
         const { size, color, radus, offsetX, offsetY } = this.props;
         const ctx = this.ctx;
 
@@ -1037,10 +1121,25 @@ class GameRender {
             await sleep(1000);
         }
     }
+
+    move() {
+        this.game.autoMove();
+        this.render();
+    }
 }
 
 const render = new GameRender(document.querySelector('#main'), game);
 render.render();
+
+// async function run() {
+//     while (true) {
+//         await render.moveRed();
+//         await sleep(1000);
+//         render.move();
+//     }
+// }
+
+// run();
 
 // const records = [
 //     '相三进五', '炮2平6',

@@ -1,3 +1,5 @@
+'use strict';
+
 const positionMap = {
     // 红方坐标系
     '一': 8,
@@ -169,12 +171,23 @@ class Game {
     }
 
     tryMove(from, to) {
+        if (this.gameOver) {
+            return false;
+        }
+
         const [oldX, oldY] = from;
         const [newX, newY] = to;
 
         const find = this.find(oldX, oldY);
-
         if (!find) {
+            return false;
+        }
+
+        if (this.moveCounter % 2 === 0 && find.player !== 'red') {
+            return false;
+        }
+
+        if (this.moveCounter % 2 === 1 && find.player !== 'black') {
             return false;
         }
 
@@ -185,7 +198,7 @@ class Game {
             return false;
         }
 
-        const steps = this.getAvailableSteps(oldX, oldY);
+        const steps = this.getAvailableSteps(find.role, find.player, oldX, oldY);
         const step = steps.find((item) => {
             const [x, y] = item;
             return x === newX && y === newY;
@@ -204,6 +217,7 @@ class Game {
             this.pieces.splice(index, 1);
 
             if (target.role === 'wang') {
+                console.log('game over');
                 this.gameOver = true;
             }
         }
@@ -262,10 +276,86 @@ class Game {
         }
     }
 
-    selectStep(steps) {
-        const index = Math.floor(Math.random() * steps.length);
-        const step = steps[index];
-        this.tryMove([step.piece.x, step.piece.y], step.to);
+    getRisk(piece, x, y) {
+        const pieces = this.pieces.filter((item) => {
+            return item.player !== piece.player;
+        }).filter((item) => {
+            // 过滤掉目标位置的棋子
+            return item.x !== x && item.y !== y;
+        });
+
+        const all = pieces.reduceRight((pre, item) => {
+            const steps = this.getAvailableSteps(item.role, item.player, item.x, item.y);
+            pre.push(...steps);
+            return pre;
+        }, []);
+
+        const eatStep = all.find((step) => {
+            return step[0] === x && step[1] === y;
+        });
+
+        if (eatStep) {
+            return Game.getWeight(piece);
+        }
+
+        return 0;
+    }
+
+    getIncome(role, player, x, y) {
+        const steps = this.getAvailableSteps(role, player, x, y);
+        return steps.reduceRight((pre, step) => {
+            const find = this.find(step[0], step[1]);
+            return pre + Game.getWeight(find);
+        }, 0);
+    }
+
+    getCandidateSteps(player) {
+        const pieces = this.pieces.filter((item) => {
+            return item.player === player;
+        });
+
+        Pieces.reduceRight((pre, item) => {
+            const steps = this.getAvailableSteps(item.role, item.player, item.x, item.y).map((step) => {
+                return {
+                    piece: item,
+                    to: step
+                };
+            });
+            pre.push(...steps);
+            return pre;
+        }, []);
+    }
+
+    checkThreat(player) {
+        // 王的威胁
+        const wang = this.pieces.find((item) => {
+            return item.player === player && item.role === 'wang';
+        });
+
+        const opposePieces = this.pieces.filter((item) => {
+            return item.player !== player;
+        });
+
+        const opposeSteps = opposePieces.reduceRight((pre, item) => {
+            const steps = this.getAvailableSteps(item.role, item.player, item.x, item.y).map((step) => {
+                return {
+                    piece: item,
+                    to: step
+                };
+            });
+            pre.push(...steps);
+            return pre;
+        }, []);
+
+        const riskSteps = opposeSteps.filter((step) => {
+            const [x, y] = step.to;
+            return wang.x == x && wang.y === y;
+        });
+
+        if (riskSteps.length > 0) {
+
+        }
+        console.log(riskSteps);
     }
 
     autoMove() {
@@ -273,38 +363,46 @@ class Game {
             return;
         }
 
-        if (this.moveCounter % 2 === 0) {
-            const player = 'red';
-            const redPieces = this.pieces.filter((item) => {
-                return item.player === player;
+        const player = this.moveCounter % 2 === 0 ? 'red' : 'black';
+
+        this.checkThreat(player);
+
+        const pieces = this.pieces.filter((item) => {
+            return item.player === player;
+        });
+
+        const all = pieces.reduceRight((pre, item) => {
+            const steps = this.getAvailableSteps(item.role, item.player, item.x, item.y).map((step) => {
+                const [x, y] = step;
+                const find = this.find(x, y);
+                return {
+                    piece: item,
+                    to: step,
+                    // 直接收益
+                    weight0: Game.getWeight(find),
+                    // 间接收益
+                    weight1: this.getIncome(item.role, item.player, x, y),
+                    // 直接风险
+                    risk0: this.getRisk(item, x, y),
+                    // 间接风险
+                };
             });
-            const all = redPieces.reduceRight((pre, item) => {
-                const steps = this.getAvailableSteps(item.x, item.y).map((step) => {
-                    return {
-                        piece: item,
-                        to: step
-                    };
-                });
-                pre.push(...steps);
-                return pre;
-            }, []);
-            this.selectStep(all);
+            pre.push(...steps);
+            return pre;
+        }, []);
+
+        if (this.mode === 'random') {
+            const index = Math.floor(Math.random() * all.length);
+            const step = all[index];
+            this.tryMove([step.piece.x, step.piece.y], step.to);
         } else {
-            const player = 'black';
-            const redPieces = this.pieces.filter((item) => {
-                return item.player === player;
+            // 收益计算
+            all.sort((a, b) => {
+                return a.weight0 - a.risk0 > b.weight0 - b.risk0 ? -1 : 1;
             });
-            const all = redPieces.reduceRight((pre, item) => {
-                const steps = this.getAvailableSteps(item.x, item.y).map((step) => {
-                    return {
-                        piece: item,
-                        to: step
-                    };
-                });
-                pre.push(...steps);
-                return pre;
-            }, []);
-            this.selectStep(all);
+            console.log(all);
+            const step = all[0];
+            this.tryMove([step.piece.x, step.piece.y], step.to);
         }
     }
 
@@ -434,6 +532,7 @@ class Game {
 
     detect(steps, player, x, y) {
         const find = this.find(x, y);
+        // 有己方单位
         if (find && find.player === player) {
             return;
         }
@@ -449,22 +548,40 @@ class Game {
         steps.push([x, y]);
     }
 
-    getAvailableSteps(x, y) {
-        let steps = [];
-        const find = this.find(x, y);
-
+    static getWeight(find) {
         if (!find) {
-            return steps;
+            return 0;
         }
 
-        if (find.role === 'che') {
+        const role = find.role;
+        if (role === 'che') {
+            return 5000;
+        } else if (role === 'ma') {
+            return 3000;
+        } else if (role === 'xiang') {
+            return 1000;
+        } else if (role === 'shi') {
+            return 1000;
+        } else if (role === 'wang') {
+            return 10000;
+        } else if (role === 'pao') {
+            return 3000;
+        } else if (role === 'bing') {
+            return 500;
+        }
+    }
+
+    getAvailableSteps(role, player, x, y) {
+        let steps = [];
+
+        if (role === 'che') {
             // 4个方向
             // up
-            for (let i = find.x + 1; i < 9; i++) {
-                const point = [i, find.y];
+            for (let i = x + 1; i < 9; i++) {
+                const point = [i, y];
                 const f = this.find(point[0], point[1]);
                 if (f) {
-                    if (f.player !== find.player) {
+                    if (f.player !== player) {
                         // 找到对方棋子，添加点
                         steps.push(point);
                     }
@@ -475,11 +592,11 @@ class Game {
             }
 
             // right
-            for (let i = find.y + 1; i < 10; i++) {
-                const point = [find.x, i];
+            for (let i = y + 1; i < 10; i++) {
+                const point = [x, i];
                 const f = this.find(point[0], point[1]);
                 if (f) {
-                    if (f.player !== find.player) {
+                    if (f.player !== player) {
                         // 找到对方棋子，添加点，但终止
                         steps.push(point);
                     }
@@ -489,11 +606,11 @@ class Game {
                 steps.push(point);
             }
 
-            for (let i = find.x - 1; i >= 0; i--) {
-                const point = [i, find.y];
+            for (let i = x - 1; i >= 0; i--) {
+                const point = [i, y];
                 const f = this.find(point[0], point[1]);
                 if (f) {
-                    if (f.player !== find.player) {
+                    if (f.player !== player) {
                         // 找到对方棋子，添加点，但终止
                         steps.push(point);
                     }
@@ -503,11 +620,11 @@ class Game {
                 steps.push(point);
             }
 
-            for (let i = find.y - 1; i >= 0; i--) {
-                const point = [find.x, i];
+            for (let i = y - 1; i >= 0; i--) {
+                const point = [x, i];
                 const f = this.find(point[0], point[1]);
                 if (f) {
-                    if (f.player !== find.player) {
+                    if (f.player !== player) {
                         // 找到对方棋子，添加点，但终止
                         steps.push(point);
                     }
@@ -518,63 +635,63 @@ class Game {
             }
 
             return steps;
-        } else if (find.role === 'ma') {
+        } else if (role === 'ma') {
             const nearUp = this.find(x, y - 1);
             if (!nearUp) {
-                this.detect(steps, find.player, x - 1, y - 2);
-                this.detect(steps, find.player, x + 1, y - 2);
+                this.detect(steps, player, x - 1, y - 2);
+                this.detect(steps, player, x + 1, y - 2);
             }
 
             const nearRight = this.find(x + 1, y);
             if (!nearRight) {
-                this.detect(steps, find.player, x + 2, y - 1);
-                this.detect(steps, find.player, x + 2, y + 1);
+                this.detect(steps, player, x + 2, y - 1);
+                this.detect(steps, player, x + 2, y + 1);
             }
 
             const nearDown = this.find(x, y + 1);
             if (!nearDown) {
-                this.detect(steps, find.player, x - 1, y + 2);
-                this.detect(steps, find.player, x + 1, y + 2);
+                this.detect(steps, player, x - 1, y + 2);
+                this.detect(steps, player, x + 1, y + 2);
             }
 
             const nearLeft = this.find(x - 1, y);
             if (!nearLeft) {
-                this.detect(steps, find.player, x - 2, y - 1);
-                this.detect(steps, find.player, x - 2, y + 1);
+                this.detect(steps, player, x - 2, y - 1);
+                this.detect(steps, player, x - 2, y + 1);
             }
 
             return steps;
-        } else if (find.role === 'xiang') {
+        } else if (role === 'xiang') {
             if (!this.find(x + 1, y - 1)) {
-                this.detect(steps, find.player, x + 2, y - 2);
+                this.detect(steps, player, x + 2, y - 2);
             }
 
             if (!this.find(x + 1, y + 1)) {
-                this.detect(steps, find.player, x + 2, y + 2);
+                this.detect(steps, player, x + 2, y + 2);
             }
 
             if (!this.find(x - 1, y + 1)) {
-                this.detect(steps, find.player, x - 2, y + 2);
+                this.detect(steps, player, x - 2, y + 2);
             }
 
             if (!this.find(x - 1, y - 1)) {
-                this.detect(steps, find.player, x - 2, y - 2);
+                this.detect(steps, player, x - 2, y - 2);
             }
 
             // 象不可过河
             return steps.filter((item) => {
                 const [_, y] = item;
-                if (find.player === 'red') {
+                if (player === 'red') {
                     return y > 4;
                 } else {
                     return y < 5;
                 }
             });
-        } else if (find.role === 'shi') {
-            this.detect(steps, find.player, x - 1, y - 1);
-            this.detect(steps, find.player, x - 1, y + 1);
-            this.detect(steps, find.player, x + 1, y - 1);
-            this.detect(steps, find.player, x + 1, y + 1);
+        } else if (role === 'shi') {
+            this.detect(steps, player, x - 1, y - 1);
+            this.detect(steps, player, x - 1, y + 1);
+            this.detect(steps, player, x + 1, y - 1);
+            this.detect(steps, player, x + 1, y + 1);
 
             // 士不出城
             return steps.filter((item) => {
@@ -583,7 +700,7 @@ class Game {
                     return false;
                 }
 
-                if (find.player === 'red') {
+                if (player === 'red') {
                     if (y < 7 || y > 9) {
                         return false;
                     }
@@ -595,12 +712,12 @@ class Game {
 
                 return true;
             });
-        } else if (find.role === 'wang') {
+        } else if (role === 'wang') {
             // 4个方向
-            this.detect(steps, find.player, x, y - 1);
-            this.detect(steps, find.player, x + 1, y);
-            this.detect(steps, find.player, x, y + 1);
-            this.detect(steps, find.player, x - 1, y);
+            this.detect(steps, player, x, y - 1);
+            this.detect(steps, player, x + 1, y);
+            this.detect(steps, player, x, y + 1);
+            this.detect(steps, player, x - 1, y);
 
             // 王不出城
             steps = steps.filter((item) => {
@@ -609,7 +726,7 @@ class Game {
                     return false;
                 }
 
-                if (find.player === 'red') {
+                if (player === 'red') {
                     if (y < 7 || y > 9) {
                         return false;
                     }
@@ -623,12 +740,12 @@ class Game {
             });
 
             // 王对王
-            if (find.player === 'red') {
-                for (let i = find.y - 1; i >= 0; i--) {
-                    const point = [find.x, i];
+            if (player === 'red') {
+                for (let i = y - 1; i >= 0; i--) {
+                    const point = [x, i];
                     const f = this.find(point[0], point[1]);
                     if (f) {
-                        if (f.player !== find.player && f.role === 'wang') {
+                        if (f.player !== player && f.role === 'wang') {
                             // 找到对方王，添加点
                             steps.push(point);
                         }
@@ -636,11 +753,11 @@ class Game {
                     }
                 }
             } else {
-                for (let i = find.y + 1; i < 10; i++) {
-                    const point = [find.x, i];
+                for (let i = y + 1; i < 10; i++) {
+                    const point = [x, i];
                     const f = this.find(point[0], point[1]);
                     if (f) {
-                        if (f.player !== find.player && f.role === 'wang') {
+                        if (f.player !== player && f.role === 'wang') {
                             // 找到对方王，添加点
                             steps.push(point);
                         }
@@ -650,15 +767,15 @@ class Game {
             }
 
             return steps;
-        } else if (find.role === 'pao') {
+        } else if (role === 'pao') {
             // 4个方向
 
             // up
             {
                 let has = false;
                 let i;
-                for (i = find.y - 1; i >= 0; i--) {
-                    const point = [find.x, i];
+                for (i = y - 1; i >= 0; i--) {
+                    const point = [x, i];
                     const f = this.find(point[0], point[1]);
                     if (f) {
                         has = true;
@@ -671,10 +788,10 @@ class Game {
                 // 炮翻山检查
                 if (has) {
                     for (i = i - 1; i >= 0; i--) {
-                        const point = [find.x, i];
+                        const point = [x, i];
                         const f = this.find(point[0], point[1]);
                         if (f) {
-                            if (f.player !== find.player) {
+                            if (f.player !== player) {
                                 steps.push(point);
                             }
                             break;
@@ -687,8 +804,8 @@ class Game {
             {
                 let has = false;
                 let i;
-                for (i = find.x + 1; i < 9; i++) {
-                    const point = [i, find.y];
+                for (i = x + 1; i < 9; i++) {
+                    const point = [i, y];
                     const f = this.find(point[0], point[1]);
                     if (f) {
                         has = true;
@@ -701,10 +818,10 @@ class Game {
                 // 炮翻山检查
                 if (has) {
                     for (i = i + 1; i < 9; i++) {
-                        const point = [i, find.y];
+                        const point = [i, y];
                         const f = this.find(point[0], point[1]);
                         if (f) {
-                            if (f.player !== find.player) {
+                            if (f.player !== player) {
                                 steps.push(point);
                             }
                             break;
@@ -718,8 +835,8 @@ class Game {
                 let has = false;
                 let i;
 
-                for (i = find.y + 1; i < 10; i++) {
-                    const point = [find.x, i];
+                for (i = y + 1; i < 10; i++) {
+                    const point = [x, i];
                     const f = this.find(point[0], point[1]);
                     if (f) {
                         has = true;
@@ -730,10 +847,10 @@ class Game {
                 }
 
                 for (i = i + 1; i < 10; i++) {
-                    const point = [find.x, i];
+                    const point = [x, i];
                     const f = this.find(point[0], point[1]);
                     if (f) {
-                        if (f.player !== find.player) {
+                        if (f.player !== player) {
                             steps.push(point);
                         }
                         break;
@@ -746,8 +863,8 @@ class Game {
                 let has = false;
                 let i;
 
-                for (i = find.x - 1; i >= 0; i--) {
-                    const point = [i, find.y];
+                for (i = x - 1; i >= 0; i--) {
+                    const point = [i, y];
                     const f = this.find(point[0], point[1]);
                     if (f) {
                         has = true;
@@ -758,10 +875,10 @@ class Game {
                 }
 
                 for (i = i - 1; i >= 0; i--) {
-                    const point = [i, find.y];
+                    const point = [i, y];
                     const f = this.find(point[0], point[1]);
                     if (f) {
-                        if (f.player !== find.player) {
+                        if (f.player !== player) {
                             steps.push(point);
                         }
                         break;
@@ -770,18 +887,18 @@ class Game {
             }
 
             return steps;
-        } else if (find.role === 'bing') {
-            if (find.player === 'red') {
-                this.detect(steps, find.player, x, y - 1);
+        } else if (role === 'bing') {
+            if (player === 'red') {
+                this.detect(steps, player, x, y - 1);
                 if (y < 5) {
-                    this.detect(steps, find.player, x - 1, y);
-                    this.detect(steps, find.player, x + 1, y);
+                    this.detect(steps, player, x - 1, y);
+                    this.detect(steps, player, x + 1, y);
                 }
             } else {
-                this.detect(steps, find.player, x, y + 1);
+                this.detect(steps, player, x, y + 1);
                 if (y > 4) {
-                    this.detect(steps, find.player, x - 1, y);
-                    this.detect(steps, find.player, x + 1, y);
+                    this.detect(steps, player, x - 1, y);
+                    this.detect(steps, player, x + 1, y);
                 }
             }
             return steps;
@@ -861,10 +978,13 @@ class GameRender {
     }
 
     displayAvailableSteps(x, y) {
-        const steps = this.game.getAvailableSteps(x, y);
-        if (steps) {
-            for (const [x, y] of steps) {
-                this.drawStep(x, y);
+        const find = this.game.find(x, y);
+        if (find) {
+            const steps = this.game.getAvailableSteps(find.role, find.player, find.x, find.y);
+            if (steps) {
+                for (const [x, y] of steps) {
+                    this.drawStep(x, y);
+                }
             }
         }
     }

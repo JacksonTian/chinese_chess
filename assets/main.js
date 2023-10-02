@@ -936,7 +936,7 @@ class GameRender {
         blackPlayerColor: 'black',
         pieceColor: '#bcd0fa',
         // 棋子半径
-        radus: 28
+        radius: 28
     }) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
@@ -960,6 +960,7 @@ class GameRender {
         this.render();
         this.drawSelect(x, y);
         this.displayAvailableSteps(x, y);
+
         if (this.selected && (this.selected[0] !== x || this.selected[1] !== y)) {
             const moved = this.game.tryMove(this.selected, [x, y]);
             this.selected = null;
@@ -990,41 +991,41 @@ class GameRender {
     }
 
     drawStep(x, y) {
-        const { size, color, radus, offsetX, offsetY } = this.props;
+        const { size, radius, offsetX, offsetY } = this.props;
         const ctx = this.ctx;
 
         // 第二象限
         ctx.beginPath();
-        ctx.moveTo(x * size + offsetX - radus, y * size + offsetY - radus + 10);
-        ctx.lineTo(x * size + offsetX - radus, y * size + offsetY - radus);
-        ctx.lineTo(x * size + offsetX - radus + 10, y * size + offsetY - radus);
+        ctx.moveTo(x * size + offsetX - radius, y * size + offsetY - radius + 10);
+        ctx.lineTo(x * size + offsetX - radius, y * size + offsetY - radius);
+        ctx.lineTo(x * size + offsetX - radius + 10, y * size + offsetY - radius);
         ctx.strokeStyle = 'red';
         ctx.lineWidth = 1;
         ctx.stroke();
 
         // 第三象限
         ctx.beginPath();
-        ctx.moveTo(x * size + offsetX - radus, y * size + offsetY + radus - 10);
-        ctx.lineTo(x * size + offsetX - radus, y * size + offsetY + radus);
-        ctx.lineTo(x * size + offsetX - radus + 10, y * size + offsetY + radus);
+        ctx.moveTo(x * size + offsetX - radius, y * size + offsetY + radius - 10);
+        ctx.lineTo(x * size + offsetX - radius, y * size + offsetY + radius);
+        ctx.lineTo(x * size + offsetX - radius + 10, y * size + offsetY + radius);
         ctx.strokeStyle = 'red';
         ctx.lineWidth = 1;
         ctx.stroke();
 
         // 第一象限
         ctx.beginPath();
-        ctx.moveTo(x * size + offsetX + radus - 10, y * size + offsetY - radus);
-        ctx.lineTo(x * size + offsetX + radus, y * size + offsetY - radus);
-        ctx.lineTo(x * size + offsetX + radus, y * size + offsetY - radus + 10);
+        ctx.moveTo(x * size + offsetX + radius - 10, y * size + offsetY - radius);
+        ctx.lineTo(x * size + offsetX + radius, y * size + offsetY - radius);
+        ctx.lineTo(x * size + offsetX + radius, y * size + offsetY - radius + 10);
         ctx.strokeStyle = 'red';
         ctx.lineWidth = 1;
         ctx.stroke();
 
         // 第四象限
         ctx.beginPath();
-        ctx.moveTo(x * size + offsetX + radus, y * size + offsetY + radus - 10);
-        ctx.lineTo(x * size + offsetX + radus, y * size + offsetY + radus);
-        ctx.lineTo(x * size + offsetX + radus - 10, y * size + offsetY + radus);
+        ctx.moveTo(x * size + offsetX + radius, y * size + offsetY + radius - 10);
+        ctx.lineTo(x * size + offsetX + radius, y * size + offsetY + radius);
+        ctx.lineTo(x * size + offsetX + radius - 10, y * size + offsetY + radius);
         ctx.strokeStyle = 'red';
         ctx.lineWidth = 1;
         ctx.stroke();
@@ -1039,41 +1040,41 @@ class GameRender {
             return;
         }
 
-        const { size, color, radus, offsetX, offsetY } = this.props;
+        const { size, color, radius, offsetX, offsetY } = this.props;
         const ctx = this.ctx;
 
         // 第二象限
         ctx.beginPath();
-        ctx.moveTo(x * size + offsetX - radus, y * size + offsetY - radus + 10);
-        ctx.lineTo(x * size + offsetX - radus, y * size + offsetY - radus);
-        ctx.lineTo(x * size + offsetX - radus + 10, y * size + offsetY - radus);
+        ctx.moveTo(x * size + offsetX - radius, y * size + offsetY - radius + 10);
+        ctx.lineTo(x * size + offsetX - radius, y * size + offsetY - radius);
+        ctx.lineTo(x * size + offsetX - radius + 10, y * size + offsetY - radius);
         ctx.strokeStyle = 'red';
         ctx.lineWidth = 1;
         ctx.stroke();
 
         // 第三象限
         ctx.beginPath();
-        ctx.moveTo(x * size + offsetX - radus, y * size + offsetY + radus - 10);
-        ctx.lineTo(x * size + offsetX - radus, y * size + offsetY + radus);
-        ctx.lineTo(x * size + offsetX - radus + 10, y * size + offsetY + radus);
+        ctx.moveTo(x * size + offsetX - radius, y * size + offsetY + radius - 10);
+        ctx.lineTo(x * size + offsetX - radius, y * size + offsetY + radius);
+        ctx.lineTo(x * size + offsetX - radius + 10, y * size + offsetY + radius);
         ctx.strokeStyle = 'red';
         ctx.lineWidth = 1;
         ctx.stroke();
 
         // 第一象限
         ctx.beginPath();
-        ctx.moveTo(x * size + offsetX + radus - 10, y * size + offsetY - radus);
-        ctx.lineTo(x * size + offsetX + radus, y * size + offsetY - radus);
-        ctx.lineTo(x * size + offsetX + radus, y * size + offsetY - radus + 10);
+        ctx.moveTo(x * size + offsetX + radius - 10, y * size + offsetY - radius);
+        ctx.lineTo(x * size + offsetX + radius, y * size + offsetY - radius);
+        ctx.lineTo(x * size + offsetX + radius, y * size + offsetY - radius + 10);
         ctx.strokeStyle = 'red';
         ctx.lineWidth = 1;
         ctx.stroke();
 
         // 第四象限
         ctx.beginPath();
-        ctx.moveTo(x * size + offsetX + radus, y * size + offsetY + radus - 10);
-        ctx.lineTo(x * size + offsetX + radus, y * size + offsetY + radus);
-        ctx.lineTo(x * size + offsetX + radus - 10, y * size + offsetY + radus);
+        ctx.moveTo(x * size + offsetX + radius, y * size + offsetY + radius - 10);
+        ctx.lineTo(x * size + offsetX + radius, y * size + offsetY + radius);
+        ctx.lineTo(x * size + offsetX + radius - 10, y * size + offsetY + radius);
         ctx.strokeStyle = 'red';
         ctx.lineWidth = 1;
         ctx.stroke();
@@ -1190,18 +1191,18 @@ class GameRender {
     // 绘制棋子函数
     drawPiece(piece) {
         const { x, y } = piece;
-        const { size, radus, pieceColor, offsetX, offsetY, fontSize } = this.props;
+        const { size, radius, pieceColor, offsetX, offsetY, fontSize } = this.props;
 
         const ctx = this.ctx;
         // 绘制棋格
         ctx.beginPath()
         ctx.moveTo(x * size + offsetX, y * size + offsetY);
-        ctx.arc(x * size + offsetX, y * size + offsetY, radus, 0, 2 * Math.PI);
+        ctx.arc(x * size + offsetX, y * size + offsetY, radius, 0, 2 * Math.PI);
         ctx.strokeStyle = this.getColor(piece);
         ctx.stroke();
 
         ctx.moveTo(x * size + offsetX, y * size + offsetY);
-        ctx.arc(x * size + offsetX, y * size + offsetY, radus, 0, 2 * Math.PI);
+        ctx.arc(x * size + offsetX, y * size + offsetY, radius, 0, 2 * Math.PI);
         ctx.fillStyle = pieceColor;
         ctx.fill();
         ctx.closePath();

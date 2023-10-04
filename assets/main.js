@@ -98,10 +98,16 @@ class Piece {
         this.y = y;
     }
 
+    toString() {
+        return `${this.player}/${this.role}(${this.x}, ${this.y})`;
+    }
+
 }
 
 class Game {
-    constructor() {
+    constructor(options = {
+        mode: 'L0'
+    }) {
         /**
          * @property {Piece}
          */
@@ -109,10 +115,24 @@ class Game {
         this.records = [];
         this.moveCounter = 0;
         this.gameOver = false;
+        this.mode = options.mode;
     }
 
     putPiece(piece) {
         this.pieces.push(piece);
+    }
+
+    fork(deleted) {
+        const game = new Game();
+
+        for (const p of this.pieces) {
+            if (deleted && p.role === deleted.role && p.player === deleted.player && p.x === deleted.x && p.y === deleted.y) {
+                continue;
+            }
+            game.putPiece(new Piece(p.role, p.player, p.x, p.y));
+        }
+
+        return game;
     }
 
     initGame() {
@@ -177,17 +197,21 @@ class Game {
 
         const [oldX, oldY] = from;
         const [newX, newY] = to;
+        console.log(`from(${oldX}, ${oldY}) to(${newX}, ${newY})`);
 
         const find = this.find(oldX, oldY);
         if (!find) {
+            console.log(`无可移动棋子`);
             return false;
         }
 
         if (this.moveCounter % 2 === 0 && find.player !== 'red') {
+            console.log(`非红方步骤`);
             return false;
         }
 
         if (this.moveCounter % 2 === 1 && find.player !== 'black') {
+            console.log(`非黑方步骤`);
             return false;
         }
 
@@ -195,16 +219,18 @@ class Game {
 
         // 目标位置有我方棋子
         if (target && target.player === find.player) {
+            console.log(`目标为我方棋子`);
             return false;
         }
 
-        const steps = this.getAvailableSteps(find.role, find.player, oldX, oldY);
+        const steps = this.getSteps(find.role, find.player, oldX, oldY);
         const step = steps.find((item) => {
-            const [x, y] = item;
-            return x === newX && y === newY;
+            const [x, y, action] = item;
+            return x === newX && y === newY && action !== 'protect';
         });
 
         if (!step) {
+            console.log(`非有效步骤`);
             return false;
         }
 
@@ -226,7 +252,7 @@ class Game {
         // TODO: check rule
         find.x = newX;
         find.y = newY;
-
+        console.log(`${find.role}(${oldX}, ${oldY}) to (${newX}, ${newY})`);
         this.moveCounter++;
         return true;
     }
@@ -302,20 +328,46 @@ class Game {
     }
 
     getIncome(role, player, x, y) {
-        const steps = this.getAvailableSteps(role, player, x, y);
+        // 获取一个新的局势
+        const game = this.fork(new Piece(role, player, x, y));
+        // 计算该棋子的接下来的所有步数
+        const steps = game.getAvailableSteps(role, player, x, y);
+        console.log(`role: ${role}`);
+        console.log(steps);
         return steps.reduceRight((pre, step) => {
-            const find = this.find(step[0], step[1]);
+            const find = game.find(step[0], step[1]);
             return pre + Game.getWeight(find);
         }, 0);
     }
 
-    getCandidateSteps(player) {
-        const pieces = this.pieces.filter((item) => {
+    getPieces(player) {
+        return this.pieces.filter((item) => {
             return item.player === player;
         });
+    }
 
-        Pieces.reduceRight((pre, item) => {
-            const steps = this.getAvailableSteps(item.role, item.player, item.x, item.y).map((step) => {
+    /**
+     * 获取所有可移动，吃子的步骤
+     * @param {*} player 
+     * @returns 
+     */
+    getCandidateSteps(player) {
+        const steps = this.getAvailableSteps(player);
+        return steps.filter((item) => {
+            return item.to[2] !== 'protect';
+        });
+    }
+
+    /**
+     * 获取所有可执行的步骤，包括保护步骤
+     * @param {String} player 
+     * @returns 
+     */
+    getAvailableSteps(player) {
+        const pieces = this.getPieces(player);
+
+        return pieces.reduceRight((pre, item) => {
+            const steps = this.getSteps(item.role, item.player, item.x, item.y).map((step) => {
                 return {
                     piece: item,
                     to: step
@@ -326,36 +378,49 @@ class Game {
         }, []);
     }
 
-    checkThreat(player) {
-        // 王的威胁
-        const wang = this.pieces.find((item) => {
-            return item.player === player && item.role === 'wang';
-        });
+    getRisks(player) {
+        const risks = [];
+        const pieces = this.getPieces(player);
+        // 获取对方候选步骤
+        const steps = this.getCandidateSteps(player === 'red' ? 'black' : 'red');
+        for (const piece of pieces) {
+            const riskSteps = steps.filter((step) => {
+                const [x, y] = step.to;
+                return piece.x == x && piece.y === y;
+            });
 
-        const opposePieces = this.pieces.filter((item) => {
-            return item.player !== player;
-        });
+            if (riskSteps.length > 0) {
+                risks.push(...riskSteps);
+            }
+        }
+        return risks;
+    }
 
-        const opposeSteps = opposePieces.reduceRight((pre, item) => {
-            const steps = this.getAvailableSteps(item.role, item.player, item.x, item.y).map((step) => {
+    getIncomes(player) {
+        const steps = this.getCandidateSteps(player);
+        return steps.filter((step) => {
+            return step.to[2] === 'eat';
+        });
+    }
+
+    getProtectSteps(player) {
+        const pieces = this.getPieces(player);
+        const all = [];
+        for (const piece of pieces) {
+            const steps = this.getSteps(piece.role, piece.player, piece.x, piece.y).map((step) => {
                 return {
-                    piece: item,
+                    piece,
                     to: step
                 };
             });
-            pre.push(...steps);
-            return pre;
-        }, []);
-
-        const riskSteps = opposeSteps.filter((step) => {
-            const [x, y] = step.to;
-            return wang.x == x && wang.y === y;
-        });
-
-        if (riskSteps.length > 0) {
-
+            all.push(...steps);
         }
-        console.log(riskSteps);
+        return all;
+    }
+
+    static random(list) {
+        const index = Math.floor(Math.random() * list.length);
+        return list[index];
     }
 
     autoMove() {
@@ -365,44 +430,251 @@ class Game {
 
         const player = this.moveCounter % 2 === 0 ? 'red' : 'black';
 
-        this.checkThreat(player);
+        const opposeSteps = this.getAvailableSteps(player === 'black' ? 'red' : 'black');
+        // 过滤移动后就被直接吃的步骤
+        const all = this.getCandidateSteps(player).filter(({ piece, to }) => {
+            // 检查目标位置的棋子
+            const [x, y, action] = to;
+            if (action === 'move') {
+                if (opposeSteps.find((d) => {
+                    return (d.to[0] === x && d.to[1] === y);
+                })) {
+                    return false;
+                }
+            } else {
+                if (opposeSteps.find((d) => {
+                    return (d.to[0] === x && d.to[1] === y);
+                })) {
+                    const eated = this.find(x, y);
+                    if (eated) {
+                        // 过滤收益低的步骤
+                        if (Game.getWeight(piece) >= Game.getWeight(eated)) {
+                            console.log(Game.getWeight(piece));
+                            console.log(Game.getWeight(eated));
+                            console.log(`${piece.toString()} eat ${eated.toString()}`);
+                            return false;
+                        }
+                    }
+                }
+            }
 
-        const pieces = this.pieces.filter((item) => {
-            return item.player === player;
+            return true;
         });
 
-        const all = pieces.reduceRight((pre, item) => {
-            const steps = this.getAvailableSteps(item.role, item.player, item.x, item.y).map((step) => {
-                const [x, y] = step;
+        // 随机走一步
+        if (this.mode === 'L0') {
+            const step = Game.random(all);
+            this.tryMove([step.piece.x, step.piece.y], step.to);
+            return;
+        }
+
+        // 只看直接收益
+        if (this.mode === 'L1') {
+            const allWithWeight = all.map((step) => {
+                const { piece, to } = step;
+                // 检查目标位置的棋子
+                const [x, y] = to;
                 const find = this.find(x, y);
                 return {
-                    piece: item,
-                    to: step,
-                    // 直接收益
-                    weight0: Game.getWeight(find),
-                    // 间接收益
-                    weight1: this.getIncome(item.role, item.player, x, y),
-                    // 直接风险
-                    risk0: this.getRisk(item, x, y),
-                    // 间接风险
+                    ...step,
+                    weight: Game.getWeight(find)
                 };
             });
-            pre.push(...steps);
-            return pre;
-        }, []);
-
-        if (this.mode === 'random') {
-            const index = Math.floor(Math.random() * all.length);
-            const step = all[index];
-            this.tryMove([step.piece.x, step.piece.y], step.to);
-        } else {
             // 收益计算
-            all.sort((a, b) => {
-                return a.weight0 - a.risk0 > b.weight0 - b.risk0 ? -1 : 1;
+            allWithWeight.sort((a, b) => {
+                return a.weight > b.weight ? -1 : 1;
             });
-            console.log(all);
-            const step = all[0];
+            allWithWeight.forEach((d) => {
+                console.log(`${d.piece.role}(${d.piece.x}, ${d.piece.y}) to (${d.to[0]}, ${d.to[1]}), weight: ${d.weight}`);
+            });
+            const step = allWithWeight[0];
             this.tryMove([step.piece.x, step.piece.y], step.to);
+            return;
+        }
+
+        // 看间接收益
+        if (this.mode === 'L2') {
+            const allWithWeight = all.map((step) => {
+                const { piece, to } = step;
+                const [x, y] = to;
+                return {
+                    ...step,
+                    // 间接收益
+                    weight: this.getIncome(piece.role, piece.player, x, y),
+                };
+            });
+            // 收益计算
+            allWithWeight.sort((a, b) => {
+                return a.weight > b.weight ? -1 : 1;
+            });
+            allWithWeight.forEach((d) => {
+                console.log(`${d.piece.role}(${d.piece.x}, ${d.piece.y}) to (${d.to[0]}, ${d.to[1]}), weight: ${d.weight}`);
+            });
+            const step = allWithWeight[0];
+            this.tryMove([step.piece.x, step.piece.y], step.to);
+            return;
+        }
+
+        // 看直接收益和间接收益
+        if (this.mode === 'L3') {
+            const allWithWeight = all.map((step) => {
+                const { piece, to } = step;
+                // 检查目标位置的棋子
+                const [x, y] = to;
+                const find = this.find(x, y);
+                return {
+                    ...step,
+                    weight0: Game.getWeight(find),
+                    // 间接收益
+                    weight1: this.getIncome(piece.role, piece.player, x, y),
+                };
+            });
+            // 收益计算
+            allWithWeight.sort((a, b) => {
+                if (a.weight0 !== b.weight0) {
+                    return a.weight0 > b.weight0 ? -1 : 1;
+                } else if (a.weight1 !== b.weight1) {
+                    return a.weight1 > b.weight1 ? -1 : 1;
+                }
+                return 0;
+            });
+            allWithWeight.forEach((d) => {
+                console.log(`${d.piece.role}(${d.piece.x}, ${d.piece.y}) to (${d.to[0]}, ${d.to[1]}), weight0: ${d.weight0}, weight1: ${d.weight1}`);
+            });
+            const step = allWithWeight[0];
+            this.tryMove([step.piece.x, step.piece.y], step.to);
+            return;
+        }
+
+        // 基于风险推断
+        if (this.mode === 'L4') {
+            // 找出当下面临的所有风险
+            const risks = this.getRisks(player);
+            console.log(risks);
+
+            // 找到被威胁的棋子
+            const beThreated = risks.map((item) => {
+                return this.find(item.to[0], item.to[1]);
+            });
+            console.log(`be threated: `);
+            beThreated.forEach((d) => {
+                console.log(d);
+            });
+            // 判断被威胁的棋子是否同时被保护
+            const steps = this.getProtectSteps(player);
+            const needToProtect = [];
+            let remain = all;
+
+            for (const piece of beThreated) {
+                const protectSteps = steps.filter((item) => {
+                    return item.to[0] === piece.x && item.to[1] === piece.y;
+                });
+                if (protectSteps.length === 0) {
+                    console.log(`need to protect: ${piece.role}(${piece.x}, ${piece.y})`)
+                    needToProtect.push(piece);
+                } else {
+                    for (let i = 0; i < protectSteps.length; i++) {
+                        const step = protectSteps[i];
+                        remain = remain.filter((item) => {
+                            if (item.piece.role !== step.piece.role) {
+                                return true;
+                            }
+
+                            if (item.piece.player !== step.piece.player) {
+                                return true;
+                            }
+
+                            if (item.piece.x !== step.piece.x) {
+                                return true;
+                            }
+
+                            if (item.piece.y !== step.piece.y) {
+                                return true;
+                            }
+
+                            if (item.to[0] !== step.to[0]) {
+                                return true;
+                            }
+
+                            if (item.to[1] !== step.to[1]) {
+                                return true;
+                            }
+
+                            return false;
+                        });
+                    }
+                }
+            }
+
+            // 如果有需要被保护的棋子
+            if (needToProtect.length > 0) {
+                // 处理威胁
+                const protect = needToProtect.sort((a, b) => {
+                    return Game.getWeight(a) > Game.getWeight(b) ? -1 : 1;
+                });
+                // 找到需要优先保护的棋子
+                const top = protect[0];
+                console.log(top);
+                // 找出可行的步骤中，可以保护该棋子的那步
+                const s = remain.filter((step) => {
+                    const { piece, to } = step;
+                    // 检查目标位置的棋子
+                    const [x, y] = to;
+                    const steps = this.getSteps(piece.role, piece.player, x, y);
+                    // 找出可保护该棋子的步骤
+                    // 1.1 找到一个可以保护它的步骤
+                    const find = steps.find((to) => {
+                        return to[0] === top.x && to[1] === top.y && to[2] === 'protect';
+                    });
+
+                    if (find) {
+                        return true;
+                    }
+
+                    return false;
+                });
+
+                console.log(s);
+
+                if (s.length > 0) {
+                    console.log(`随机选择一步保护措施`);
+                    const step = Game.random(s);
+                    this.tryMove([step.piece.x, step.piece.y], step.to);
+                    return;
+                }
+
+                // TODO: 找不到可以保护该棋子的情况下，尝试看看自身是否可以躲避
+                console.log('无保护措施，随机走一步');
+                const step = Game.random(remain);
+                this.tryMove([step.piece.x, step.piece.y], step.to);
+                return;
+            }
+
+            console.log('remain steps:');
+            console.log(remain);
+
+            // 兜底随便走一步
+            // 找到有收益的步骤
+            if (remain.length > 0) {
+                const sorted = remain.map((step) => {
+                    return {
+                        ...step,
+                        weight: Game.getWeight(this.find(step.to[0], step.to[1]))
+                    }
+                }).sort((a, b) => {
+                    return a.weight > b.weight ? -1 : 1;
+                });
+                const step = sorted[0];
+                console.log(`兜底找到收益最高的步骤`);
+                console.log(sorted);
+                this.tryMove([step.piece.x, step.piece.y], step.to);
+                return;
+            }
+
+            console.log(`兜底随便走一步`);
+            const step = Game.random(remain);
+            this.tryMove([step.piece.x, step.piece.y], step.to);
+            return;
         }
     }
 
@@ -533,7 +805,12 @@ class Game {
     detect(steps, player, x, y) {
         const find = this.find(x, y);
         // 有己方单位
-        if (find && find.player === player) {
+        if (find) {
+            if (find.player === player) {
+                steps.push([x, y, 'protect']);
+            } else {
+                steps.push([x, y, 'eat']);
+            }
             return;
         }
 
@@ -545,7 +822,7 @@ class Game {
             return;
         }
 
-        steps.push([x, y]);
+        steps.push([x, y, 'eat']);
     }
 
     static getWeight(find) {
@@ -571,7 +848,7 @@ class Game {
         }
     }
 
-    getAvailableSteps(role, player, x, y) {
+    getSteps(role, player, x, y) {
         let steps = [];
 
         if (role === 'che') {
@@ -583,12 +860,14 @@ class Game {
                 if (f) {
                     if (f.player !== player) {
                         // 找到对方棋子，添加点
-                        steps.push(point);
+                        steps.push([...point, 'eat']);
+                    } else {
+                        steps.push([...point, 'protect']);
                     }
                     break;
                 }
 
-                steps.push(point);
+                steps.push([...point, 'eat']);
             }
 
             // right
@@ -597,13 +876,15 @@ class Game {
                 const f = this.find(point[0], point[1]);
                 if (f) {
                     if (f.player !== player) {
-                        // 找到对方棋子，添加点，但终止
-                        steps.push(point);
+                        // 找到对方棋子，添加点
+                        steps.push([...point, 'eat']);
+                    } else {
+                        steps.push([...point, 'protect']);
                     }
                     break;
                 }
 
-                steps.push(point);
+                steps.push([...point, 'eat']);
             }
 
             for (let i = x - 1; i >= 0; i--) {
@@ -611,13 +892,15 @@ class Game {
                 const f = this.find(point[0], point[1]);
                 if (f) {
                     if (f.player !== player) {
-                        // 找到对方棋子，添加点，但终止
-                        steps.push(point);
+                        // 找到对方棋子，添加点
+                        steps.push([...point, 'eat']);
+                    } else {
+                        steps.push([...point, 'protect']);
                     }
                     break;
                 }
 
-                steps.push(point);
+                steps.push([...point, 'eat']);
             }
 
             for (let i = y - 1; i >= 0; i--) {
@@ -625,13 +908,15 @@ class Game {
                 const f = this.find(point[0], point[1]);
                 if (f) {
                     if (f.player !== player) {
-                        // 找到对方棋子，添加点，但终止
-                        steps.push(point);
+                        // 找到对方棋子，添加点
+                        steps.push([...point, 'eat']);
+                    } else {
+                        steps.push([...point, 'protect']);
                     }
                     break;
                 }
 
-                steps.push(point);
+                steps.push([...point, 'eat']);
             }
 
             return steps;
@@ -747,7 +1032,7 @@ class Game {
                     if (f) {
                         if (f.player !== player && f.role === 'wang') {
                             // 找到对方王，添加点
-                            steps.push(point);
+                            steps.push([...point, 'eat']);
                         }
                         break;
                     }
@@ -759,7 +1044,7 @@ class Game {
                     if (f) {
                         if (f.player !== player && f.role === 'wang') {
                             // 找到对方王，添加点
-                            steps.push(point);
+                            steps.push([...point, 'eat']);
                         }
                         break;
                     }
@@ -782,7 +1067,7 @@ class Game {
                         break;
                     }
 
-                    steps.push(point);
+                    steps.push([...point, 'move']);
                 }
 
                 // 炮翻山检查
@@ -792,7 +1077,9 @@ class Game {
                         const f = this.find(point[0], point[1]);
                         if (f) {
                             if (f.player !== player) {
-                                steps.push(point);
+                                steps.push([...point, 'eat']);
+                            } else {
+                                steps.push([...point, 'protect']);
                             }
                             break;
                         }
@@ -812,7 +1099,7 @@ class Game {
                         break;
                     }
 
-                    steps.push(point);
+                    steps.push([...point, 'move']);
                 }
 
                 // 炮翻山检查
@@ -822,7 +1109,9 @@ class Game {
                         const f = this.find(point[0], point[1]);
                         if (f) {
                             if (f.player !== player) {
-                                steps.push(point);
+                                steps.push([...point, 'eat']);
+                            } else {
+                                steps.push([...point, 'protect']);
                             }
                             break;
                         }
@@ -843,17 +1132,21 @@ class Game {
                         break;
                     }
 
-                    steps.push(point);
+                    steps.push([...point, 'move']);
                 }
 
-                for (i = i + 1; i < 10; i++) {
-                    const point = [x, i];
-                    const f = this.find(point[0], point[1]);
-                    if (f) {
-                        if (f.player !== player) {
-                            steps.push(point);
+                if (has) {
+                    for (i = i + 1; i < 10; i++) {
+                        const point = [x, i];
+                        const f = this.find(point[0], point[1]);
+                        if (f) {
+                            if (f.player !== player) {
+                                steps.push([...point, 'eat']);
+                            } else {
+                                steps.push([...point, 'protect']);
+                            }
+                            break;
                         }
-                        break;
                     }
                 }
             }
@@ -871,17 +1164,21 @@ class Game {
                         break;
                     }
 
-                    steps.push(point);
+                    steps.push([...point, 'move']);
                 }
 
-                for (i = i - 1; i >= 0; i--) {
-                    const point = [i, y];
-                    const f = this.find(point[0], point[1]);
-                    if (f) {
-                        if (f.player !== player) {
-                            steps.push(point);
+                if (has) {
+                    for (i = i - 1; i >= 0; i--) {
+                        const point = [i, y];
+                        const f = this.find(point[0], point[1]);
+                        if (f) {
+                            if (f.player !== player) {
+                                steps.push([...point, 'eat']);
+                            } else {
+                                steps.push([...point, 'protect']);
+                            }
+                            break;
                         }
-                        break;
                     }
                 }
             }
@@ -906,16 +1203,6 @@ class Game {
     }
 }
 
-function sleep(ms) {
-    return new Promise((resolve) => {
-        setTimeout(resolve, ms);
-    });
-}
-
-const canvas = document.querySelector('#main');
-const game = new Game(canvas);
-game.initGame();
-
 class GameRender {
     /**
      * 
@@ -926,7 +1213,10 @@ class GameRender {
     constructor(canvas, game, props = {
         lineWidth: 2,
         color: '#333',
+        // 棋格大小
         size: 60,
+        // 棋子半径
+        radius: 25,
         offsetX: 30,
         offsetY: 30,
         fontSize: '40px',
@@ -934,9 +1224,8 @@ class GameRender {
         redPlayerColor: 'red',
         // 黑色方棋子
         blackPlayerColor: 'black',
-        pieceColor: '#bcd0fa',
-        // 棋子半径
-        radius: 28
+        // 棋子颜色
+        pieceColor: '#fff'
     }) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
@@ -971,6 +1260,7 @@ class GameRender {
             }
         } else {
             if (this.game.find(x, y)) {
+                console.log(`selected ${x}, ${y}`);
                 this.selected = [x, y];
             } else {
                 this.selected = null;
@@ -980,27 +1270,53 @@ class GameRender {
 
     displayAvailableSteps(x, y) {
         const find = this.game.find(x, y);
-        if (find) {
-            const steps = this.game.getAvailableSteps(find.role, find.player, find.x, find.y);
-            if (steps) {
-                for (const [x, y] of steps) {
-                    this.drawStep(x, y);
+        if (!find) {
+            return;
+        }
+
+        const opposeSteps = this.game.getAvailableSteps(find.player === 'red' ? 'black' : 'red');
+
+        const steps = this.game.getSteps(find.role, find.player, find.x, find.y);
+        for (const [x, y, action] of steps) {
+            if (action !== 'protect') {
+                this.drawStep(x, y);
+                if (opposeSteps.find((d) => {
+                    return d.to[0] === x && d.to[1] === y && d.to[2] != 'move';
+                })) {
+                    this.drawWarningStep(x, y);
                 }
             }
+
         }
+    }
+
+    drawWarningStep(x, y) {
+        const { size, lineWidth, color, radius, offsetX, offsetY } = this.props;
+        const ctx = this.ctx;
+        ctx.strokeStyle = 'red';
+        ctx.lineWidth = lineWidth;
+        ctx.beginPath();
+        ctx.moveTo(x * size + offsetX - radius, y * size + offsetY - radius);
+        ctx.lineTo(x * size + offsetX + radius, y * size + offsetY + radius);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(x * size + offsetX - radius, y * size + offsetY + radius);
+        ctx.lineTo(x * size + offsetX + radius, y * size + offsetY - radius);
+        ctx.stroke();
     }
 
     drawStep(x, y) {
         const { size, radius, offsetX, offsetY } = this.props;
         const ctx = this.ctx;
 
+        ctx.lineWidth = 0.5;
+        ctx.strokeStyle = 'red';
         // 第二象限
         ctx.beginPath();
         ctx.moveTo(x * size + offsetX - radius, y * size + offsetY - radius + 10);
         ctx.lineTo(x * size + offsetX - radius, y * size + offsetY - radius);
         ctx.lineTo(x * size + offsetX - radius + 10, y * size + offsetY - radius);
-        ctx.strokeStyle = 'red';
-        ctx.lineWidth = 1;
         ctx.stroke();
 
         // 第三象限
@@ -1008,8 +1324,6 @@ class GameRender {
         ctx.moveTo(x * size + offsetX - radius, y * size + offsetY + radius - 10);
         ctx.lineTo(x * size + offsetX - radius, y * size + offsetY + radius);
         ctx.lineTo(x * size + offsetX - radius + 10, y * size + offsetY + radius);
-        ctx.strokeStyle = 'red';
-        ctx.lineWidth = 1;
         ctx.stroke();
 
         // 第一象限
@@ -1017,8 +1331,6 @@ class GameRender {
         ctx.moveTo(x * size + offsetX + radius - 10, y * size + offsetY - radius);
         ctx.lineTo(x * size + offsetX + radius, y * size + offsetY - radius);
         ctx.lineTo(x * size + offsetX + radius, y * size + offsetY - radius + 10);
-        ctx.strokeStyle = 'red';
-        ctx.lineWidth = 1;
         ctx.stroke();
 
         // 第四象限
@@ -1026,8 +1338,6 @@ class GameRender {
         ctx.moveTo(x * size + offsetX + radius, y * size + offsetY + radius - 10);
         ctx.lineTo(x * size + offsetX + radius, y * size + offsetY + radius);
         ctx.lineTo(x * size + offsetX + radius - 10, y * size + offsetY + radius);
-        ctx.strokeStyle = 'red';
-        ctx.lineWidth = 1;
         ctx.stroke();
     }
 
@@ -1092,6 +1402,9 @@ class GameRender {
     }
 
     drawBoard() {
+        // 清理画布
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
         // 绘制所有的横线
         for (let i = 0; i < 10; i++) {
             this.drawLine(0, i, 8, i)
@@ -1194,20 +1507,22 @@ class GameRender {
         const { size, radius, pieceColor, offsetX, offsetY, fontSize } = this.props;
 
         const ctx = this.ctx;
-        // 绘制棋格
+        // 绘制外圈
         ctx.beginPath()
         ctx.moveTo(x * size + offsetX, y * size + offsetY);
         ctx.arc(x * size + offsetX, y * size + offsetY, radius, 0, 2 * Math.PI);
         ctx.strokeStyle = this.getColor(piece);
+        ctx.lineWidth = 5;
         ctx.stroke();
 
+        // 绘制棋子
         ctx.moveTo(x * size + offsetX, y * size + offsetY);
         ctx.arc(x * size + offsetX, y * size + offsetY, radius, 0, 2 * Math.PI);
         ctx.fillStyle = pieceColor;
         ctx.fill();
         ctx.closePath();
 
-        // 绘制棋子
+        // 绘制文字
         ctx.font = `400 ${fontSize} 微软雅黑`;
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
@@ -1222,12 +1537,7 @@ class GameRender {
         return player === 'red' ? redPlayerColor : blackPlayerColor;
     }
 
-    clear() {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    }
-
     render() {
-        this.clear();
         this.drawBoard();
         const pieces = this.game.pieces;
         for (const piece of pieces) {
@@ -1249,14 +1559,24 @@ class GameRender {
     }
 }
 
+function sleep(ms) {
+    return new Promise((resolve) => {
+        setTimeout(resolve, ms);
+    });
+}
+
+const game = new Game({ mode: 'L4' });
+game.initGame();
+
 const render = new GameRender(document.querySelector('#main'), game);
 render.render();
 
 // async function run() {
-//     while (true) {
-//         await render.moveRed();
+//     while (!render.game.gameOver) {
+//         render.move();
 //         await sleep(1000);
 //         render.move();
+//         await sleep(1000);
 //     }
 // }
 

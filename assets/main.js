@@ -116,6 +116,8 @@ class Game {
         this.moveCounter = 0;
         this.gameOver = false;
         this.mode = options.mode;
+        // 记录上一步被吃的棋子
+        this.eated = null;
     }
 
     putPiece(piece) {
@@ -131,6 +133,7 @@ class Game {
             }
             game.putPiece(new Piece(p.role, p.player, p.x, p.y));
         }
+        game.moveCounter = this.moveCounter;
 
         return game;
     }
@@ -240,12 +243,16 @@ class Game {
 
         if (index !== -1) {
             console.log('发生吃兵');
+            this.eated = this.pieces.find((item) => {
+                return (item.player !== find.player && item.x === newX && item.y === newY);
+            });
             this.pieces.splice(index, 1);
-
             if (target.role === 'wang') {
                 console.log('game over');
                 this.gameOver = true;
             }
+        } else {
+            this.eated = null;
         }
 
         this.records.push(Game.makeStep(find, newX, newY));
@@ -608,6 +615,8 @@ class Game {
                 return pre;
             }, []);
 
+            console.log(clearRiskSteps);
+
             if (clearRiskSteps.length > 0) {
                 const step = Game.random(clearRiskSteps);
                 this.tryMove([step.piece.x, step.piece.y], step.to);
@@ -622,6 +631,11 @@ class Game {
                     // 找出非自身棋子的步骤
                     return step.piece.x !== topPiece.x || step.piece.y !== topPiece.y;
                 }).filter((step) => {
+                    // 高权重不替低权重棋子抵挡
+                    if (Game.getWeight(step.piece) >= weight) {
+                        return false;
+                    }
+
                     const candidateSteps = this.getResistPoints(risk, topPiece);
 
                     // 可以抵挡在对方的行进路线中
@@ -629,9 +643,21 @@ class Game {
                         return step.to[0] === d[0] && step.to[1] === d[1];
                     })) {
                         return true;
-                    } else {
-                        return false;
                     }
+
+                    // if (risk.piece.role === 'pao') {
+                    //     const condition = risk.to[3];
+                    //     if (condition && condition.player === topPiece.player) {
+                    //         // 
+                    //         this.getSteps(condition.role, condition.player, condition.x, condition.y).filter((d) => {
+
+                    //         });
+                    //     }
+            
+                    //     return steps;
+                    // }
+
+                    return false;
                 });
 
                 pre.push(...steps);
@@ -652,8 +678,13 @@ class Game {
             // 找出可行的步骤中，可以保护该棋子的那步
             const s = remain.filter((step) => {
                 // 找出非自身棋子的步骤
-                return step.piece.x !== top.x && step.piece.y !== top.y;
+                return step.piece.x !== topPiece.x && step.piece.y !== topPiece.y;
             }).filter((step) => {
+                // 如果被威胁的是王，忽略所有保护步骤
+                if (topPiece.role === 'wang') {
+                    return false;
+                }
+
                 const { piece, to } = step;
                 // 检查目标位置的棋子
                 const [x, y] = to;
@@ -661,7 +692,7 @@ class Game {
                 // 找出可保护该棋子的步骤
                 // 1.1 找到一个可以保护它的步骤
                 const find = steps.find((to) => {
-                    return to[0] === top.x && to[1] === top.y && to[2] === 'protect';
+                    return to[0] === topPiece.x && to[1] === topPiece.y && to[2] === 'protect';
                 });
 
                 if (find) {
@@ -669,6 +700,17 @@ class Game {
                 }
 
                 return false;
+            }).filter((step) => {
+                const { piece, to } = step;
+                // 检查目标位置的棋子
+                const [x, y] = to;
+                // 过滤掉无效保护
+                if (opposeSteps.find((d) => {
+                    return d.to[0] === x && d.to[1] === y && d.to[2] !== 'move';
+                })) {
+                    return false;
+                }
+                return true;
             });
 
             console.log(s);
@@ -707,19 +749,23 @@ class Game {
                 return;
             }
 
-            console.log('无保护措施，通过 L3 走一步');
-            this.L3(all);
-            return;
+            if (topPiece.role === 'wang') {
+                console.log('必输局面');
+                this.gameOver = true;
+                return;
+            }
         }
 
         console.log('remain steps:');
-        console.log(remain);
+        console.log();
 
+        // 过滤低收益步骤
+        const remainSteps = this.filterOut(remain, player)
         // 兜底随便走一步
         // 找到有收益的步骤
-        if (remain.length > 0) {
+        if (remainSteps.length > 0) {
             console.log(`兜底找到收益最高的步骤`);
-            this.L3(remain);
+            this.L3(remainSteps);
             return;
         }
 
@@ -732,6 +778,38 @@ class Game {
         return all.filter(({ piece, to }) => {
             // 检查目标位置的棋子
             const [x, y, action] = to;
+
+            const newGame = this.fork();
+            const preRisks = newGame.getRisks(currentPlayer);
+            console.log('before risks');
+            console.log(preRisks);
+            newGame.tryMove([piece.x, piece.y], [x, y]);
+            const risks = newGame.getRisks(currentPlayer);
+            console.log('after risks');
+            console.log(risks);
+            if (risks.find((d) => {
+                // 给对方炮形成了炮台
+                const condition = d.to[3];
+                if (condition && condition.x === x && condition.y === y) {
+                    return true;
+                }
+
+                // 被吃
+                if (d.to[0] === x && d.to[1] === y && d.to[2] !== 'move') {
+                    return true;
+                }
+
+                const etaed = newGame.find(d.to[0], d.to[1]);
+                if (Game.getWeight(etaed) > Game.getWeight(newGame.etaed)) {
+                    return true;
+                }
+
+                return false;
+            })) {
+                // 如果陷入到新的风险中，不走该步
+                return false;
+            }
+
             if (action === 'move') {
                 if (opposeSteps.find((d) => {
                     if (d.role === 'pao') {
@@ -760,7 +838,7 @@ class Game {
                         return false;
                     }
                     // 如果吃到棋子，计算权重
-                    if (Game.getWeight(piece) >= Game.getWeight(eated)) {
+                    if (Game.getWeight(piece) - Game.getWeight(this.eated) >= Game.getWeight(eated)) {
                         console.log(Game.getWeight(piece));
                         console.log(Game.getWeight(eated));
                         console.log(`${piece.toString()} eat ${eated.toString()}`);
@@ -856,7 +934,7 @@ class Game {
 
             return points;
         } else if (piece.role === 'pao') {
-            const steps = this.getSteps(piece.role, piece.player, piece.x, piece.y).filter((d) => {
+            return this.getSteps(piece.role, piece.player, piece.x, piece.y).filter((d) => {
                 // 攻击路径
                 if (d[0] === victim.x) {
                     if (victim.y < piece.y && d[1] < piece.y) {
@@ -872,8 +950,28 @@ class Game {
                     }
                 }
                 return false;
+            }).filter((d) => {
+                return !(d[0] === victim.x && d[1] === victim.y);
             });
+        } else if (piece.role === 'xiang') {
+            const points = [];
+            if (victim.y === piece.y - 2 && victim.x === piece.x + 2) {
+                points.push([victim.x - 1, victim.y + 1]);
+            }
 
+            if (victim.y === piece.y + 2 && victim.x === piece.x + 2) {
+                points.push([victim.x - 1, victim.y - 1]);
+            }
+
+            if (victim.y === piece.y + 2 && victim.x === piece.x - 2) {
+                points.push([victim.x + 1, victim.y - 1]);
+            }
+
+            if (victim.y === piece.y - 2 && victim.x === piece.x - 2) {
+                points.push([victim.x + 1, victim.y + 1]);
+            }
+
+            return points;
         }
 
         return [];
@@ -1782,9 +1880,10 @@ function sleep(ms) {
 const game = new Game({ mode: 'L4' });
 game.initGame();
 // game.putPiece(new Piece('wang', 'black', 4, 0));
-// game.putPiece(new Piece('xiang', 'black', 6, 0));
-// game.putPiece(new Piece('shi', 'black', 4, 1));
 // game.putPiece(new Piece('wang', 'red', 4, 9));
+// // game.putPiece(new Piece('xiang', 'black', 6, 0));
+// // game.putPiece(new Piece('shi', 'black', 4, 1));
+// game.putPiece(new Piece('pao', 'black', 7, 3));
 // game.putPiece(new Piece('pao', 'red', 5, 4));
 
 const render = new GameRender(document.querySelector('#main'), game);

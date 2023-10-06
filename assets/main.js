@@ -401,26 +401,17 @@ class Game {
         return risks;
     }
 
+    static caculateRisks(pieces) {
+        return pieces.reduceRight((pre, current) => {
+            return pre + Game.getWeight(current);
+        }, 0);
+    }
+
     getIncomes(player) {
         const steps = this.getCandidateSteps(player);
         return steps.filter((step) => {
             return step.to[2] === 'eat';
         });
-    }
-
-    getProtectSteps(player) {
-        const pieces = this.getPieces(player);
-        const all = [];
-        for (const piece of pieces) {
-            const steps = this.getSteps(piece.role, piece.player, piece.x, piece.y).map((step) => {
-                return {
-                    piece,
-                    to: step
-                };
-            });
-            all.push(...steps);
-        }
-        return all;
     }
 
     static random(list) {
@@ -540,12 +531,11 @@ class Game {
 
         // 找出被威胁的步骤
         // 判断被威胁的棋子是否同时被保护
-        const steps = this.getProtectSteps(player);
         const needToProtect = [];
         let remain = all;
 
         for (const piece of beThreated) {
-            const protectSteps = steps.filter((item) => {
+            const protectSteps = all.filter((item) => {
                 return item.to[0] === piece.x && item.to[1] === piece.y;
             });
             if (protectSteps.length === 0) {
@@ -772,6 +762,76 @@ class Game {
         console.log(`兜底使用L3方式走一步`);
         this.L3(all);
     }
+    
+    L5(all) {
+        const player = this.moveCounter % 2 === 0 ? 'red' : 'black';
+        const steps = all.map(({ piece, to }) => {
+            // 检查目标位置的棋子
+            const [x, y, action] = to;
+
+            const newGame = this.fork();
+            const preRisks = newGame.getRisks(player);
+            console.log('before risks');
+            console.log(preRisks);
+            const protectSteps = newGame.getAvailableSteps(player);
+            const before = Game.caculateRisks(preRisks.map((d) => {
+                return newGame.find(d.to[0], d.to[1]);
+            }).filter((d) => {
+                const s = protectSteps.filter((item) => {
+                    return item.to[0] === d.x && item.to[1] === d.y;
+                });
+                if (s.length === 0) {
+                    return true;
+                }
+                return false;
+            }));
+            newGame.tryMove([piece.x, piece.y], [x, y]);
+            const income = Game.getWeight(newGame.eated);
+            const risks = newGame.getRisks(player);
+            const protectSteps2 = newGame.getAvailableSteps(player);
+            const after = Game.caculateRisks(risks.map((d) => {
+                return newGame.find(d.to[0], d.to[1]);
+            }).filter((d) => {
+                const protectSteps = protectSteps2.filter((item) => {
+                    return item.to[0] === d.x && item.to[1] === d.y;
+                });
+                if (protectSteps.length === 0) {
+                    return true;
+                }
+                return false;
+            }));
+
+            return {
+                piece,
+                to,
+                income,
+                before,
+                after
+            };
+        }).filter((d) => {
+            if (d.after > d.before) {
+                return false;
+            }
+            return true;
+        });
+        steps.sort((a, b) => {
+            if (a.after - a.income < b.after - b.income) {
+                return -1;
+            }
+
+            if (a.income !== b.income) {
+                return (a.income > b.income) ? -1 : 1;
+            }
+
+            const diffA = a.after - a.before;
+            const diffB = b.after - b.before;
+            return diffA < diffB ? -1 : 1;
+        });
+        console.log(steps);
+        const step = steps[0];
+        this.tryMove([step.piece.x, step.piece.y], step.to);
+        return;
+    }
 
     filterOut(all, currentPlayer) {
         const opposeSteps = this.getAvailableSteps(currentPlayer === 'black' ? 'red' : 'black');
@@ -889,6 +949,12 @@ class Game {
         // 基于风险推断
         if (this.mode === 'L4') {
             this.L4(all);
+            return;
+        }
+
+        // 通过虚拟棋盘执行后反推风险
+        if (this.mode === 'L5') {
+            this.L5(all);
             return;
         }
     }
@@ -1877,7 +1943,7 @@ function sleep(ms) {
     });
 }
 
-const game = new Game({ mode: 'L4' });
+const game = new Game({ mode: 'L5' });
 game.initGame();
 // game.putPiece(new Piece('wang', 'black', 4, 0));
 // game.putPiece(new Piece('wang', 'red', 4, 9));

@@ -4,7 +4,7 @@ import { sleep } from "./util.js";
 import Game from "./game.js";
 import GameRender from "./render.js";
 
-const game = new Game({ mode: 'L5' });
+const game = new Game({ mode: 'L0' });
 game.initGame();
 
 // // 钓鱼马绝杀

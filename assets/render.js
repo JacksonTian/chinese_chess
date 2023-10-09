@@ -79,24 +79,16 @@ export default class GameRender {
             return;
         }
 
-        const steps = this.game.getSteps(find.role, find.player, find.x, find.y);
-        for (const [x, y, action] of steps) {
-            if (action !== 'protect' && action !== 'will-eat') {
-                this.drawStep(x, y);
-                const newGame = this.game.fork();
-                newGame.tryMove([find.x, find.y], [x, y]);
-                const opposeSteps = newGame.getAvailableSteps(find.player === 'red' ? 'black' : 'red');
-                if (opposeSteps.find((d) => {
-                    const condition = d.to[3];
-                    if (condition && condition.x === find.x && condition.y === find.y) {
-                        // 炮的判断比较特别
-                        return d.to[0] === x && d.to[1] === y && (d.to[2] != 'move' && d.to[2] !== 'will-eat');
-                    } else {
-                        return d.to[0] === x && d.to[1] === y && d.to[2] != 'move';
-                    }
-                })) {
-                    this.drawWarningStep(x, y);
-                }
+        const steps = this.game.getSteps(find.player, find.role, find.x, find.y);
+        for (const [x, y] of steps) {
+            this.drawStep(x, y);
+            const newGame = this.game.fork();
+            newGame.tryMove([find.x, find.y], [x, y]);
+            const opposeSteps = newGame.getAvailableSteps(find.player === 'red' ? 'black' : 'red');
+            if (opposeSteps.find((d) => {
+                return d.to[0] === x && d.to[1] === y && d.to[2] != 'move';
+            })) {
+                this.drawWarningStep(x, y);
             }
         }
     }

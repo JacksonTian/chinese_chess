@@ -1,0 +1,23 @@
+{
+  "name": "chinese_chess",
+  "version": "1.0.0",
+  "description": "- [x] 着点提示",
+  "main": "index.js",
+  "type": "module",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "mocha -R spec",
+    "lint": "eslint --fix ./lib ./bin",
+    "cov": "c8 -r=lcov -r=html -r=text -r=json npm run test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "c8": "^8.0.1",
+    "eslint": "^8.51.0",
+    "mocha": "^10.2.0"
+  }
+}

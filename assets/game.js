@@ -139,7 +139,7 @@ export default class Game {
         const steps = this.getSteps(find.role, find.player, oldX, oldY);
         const step = steps.find((item) => {
             const [x, y, action] = item;
-            return x === newX && y === newY && action !== 'protect' && action !== 'will-eat';
+            return x === newX && y === newY;
         });
 
         if (!step) {
@@ -201,9 +201,7 @@ export default class Game {
 
     getIncome(role, player, x, y) {
         const game = this.fork();
-        const steps = game.getSteps(role, player, x, y).filter((step) => {
-            return step[2] !== 'protect' && step[2] !== 'will-eat';
-        });
+        const steps = game.getSteps(role, player, x, y);
         return steps.reduceRight((pre, step) => {
             const find = game.find(step[0], step[1]);
             return pre + Game.getWeight(find);
@@ -223,9 +221,7 @@ export default class Game {
      */
     getCandidateSteps(player) {
         const steps = this.getAvailableSteps(player);
-        return steps.filter((item) => {
-            return item.to[2] !== 'protect' && item.to[2] !== 'will-eat';
-        });
+        return steps;
     }
 
     /**
@@ -1231,12 +1227,8 @@ export default class Game {
                         if (f) {
                             if (f.player !== player) {
                                 steps.push([...point, 'eat', condition]);
-                            } else {
-                                steps.push([...point, 'protect', condition]);
                             }
                             break;
-                        } else {
-                            steps.push([...point, 'will-eat', condition]);
                         }
                     }
                 }
@@ -1265,12 +1257,8 @@ export default class Game {
                         if (f) {
                             if (f.player !== player) {
                                 steps.push([...point, 'eat', condition]);
-                            } else {
-                                steps.push([...point, 'protect', condition]);
                             }
                             break;
-                        } else {
-                            steps.push([...point, 'will-eat', condition]);
                         }
                     }
                 }
@@ -1299,12 +1287,8 @@ export default class Game {
                         if (f) {
                             if (f.player !== player) {
                                 steps.push([...point, 'eat', condition]);
-                            } else {
-                                steps.push([...point, 'protect', condition]);
                             }
                             break;
-                        } else {
-                            steps.push([...point, 'will-eat', condition]);
                         }
                     }
                 }
@@ -1333,12 +1317,8 @@ export default class Game {
                         if (f) {
                             if (f.player !== player) {
                                 steps.push([...point, 'eat', condition]);
-                            } else {
-                                steps.push([...point, 'protect', condition]);
                             }
                             break;
-                        } else {
-                            steps.push([...point, 'will-eat', condition]);
                         }
                     }
                 }

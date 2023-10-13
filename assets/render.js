@@ -80,7 +80,10 @@ export default class GameRender {
         }
 
         const steps = this.game.getSteps(find.player, find.role, find.x, find.y);
-        for (const [x, y] of steps) {
+        for (const [x, y, action] of steps) {
+            if (action === 'protect') {
+                continue;
+            }
             this.drawStep(x, y);
             const newGame = this.game.fork();
             newGame.tryMove([find.x, find.y], [x, y]);

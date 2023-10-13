@@ -455,19 +455,19 @@ describe('game.js', () => {
     it('getSteps() for bing should ok', () => {
         const game = new Game({ mode: 'L0' });
         game.put('bing', 'red', 4, 5);
-    
+
         assert.deepStrictEqual(game.getSteps('red', 'bing', 4, 5), [
             [4, 4, 'eat']
         ]);
 
         game.put('bing', 'black', 4, 4);
-    
+
         assert.deepStrictEqual(game.getSteps('black', 'bing', 4, 4), [
             [4, 5, 'eat']
         ]);
 
         game.put('bing', 'red', 2, 4);
-    
+
         assert.deepStrictEqual(game.getSteps('red', 'bing', 2, 4), [
             [2, 3, 'eat'],
             [1, 4, 'eat'],
@@ -475,11 +475,223 @@ describe('game.js', () => {
         ]);
 
         game.put('bing', 'black', 2, 5);
-    
+
         assert.deepStrictEqual(game.getSteps('black', 'bing', 2, 5), [
             [2, 6, 'eat'],
             [1, 5, 'eat'],
             [3, 5, 'eat']
+        ]);
+    });
+
+    it('getCandidateSteps() should ok', () => {
+        const game = new Game({ mode: 'L0' });
+        game.initGame();
+        const stepsForChe = game.getSteps('red', 'che', 0, 9);
+        assert.equal(stepsForChe.length, 4);
+    });
+
+    it('getAvailableSteps() for case 1 should ok', () => {
+        const game = new Game({ mode: 'L0' });
+        game.put('pao', 'red', 4, 5);
+        assert.deepStrictEqual(game.getAvailableSteps('red'), [
+            {
+                piece: new Piece('pao', 'red', 4, 5),
+                to: [4, 4, 'move']
+            },
+            {
+                piece: new Piece('pao', 'red', 4, 5),
+                to: [4, 3, 'move']
+            },
+            {
+                piece: new Piece('pao', 'red', 4, 5),
+                to: [4, 2, 'move']
+            },
+            {
+                piece: new Piece('pao', 'red', 4, 5),
+                to: [4, 1, 'move']
+            },
+            {
+                piece: new Piece('pao', 'red', 4, 5),
+                to: [4, 0, 'move']
+            },
+            {
+                piece: new Piece('pao', 'red', 4, 5),
+                to: [5, 5, 'move']
+            },
+            {
+                piece: new Piece('pao', 'red', 4, 5),
+                to: [6, 5, 'move']
+            },
+            {
+                piece: new Piece('pao', 'red', 4, 5),
+                to: [7, 5, 'move']
+            },
+            {
+                piece: new Piece('pao', 'red', 4, 5),
+                to: [8, 5, 'move']
+            },
+            {
+                piece: new Piece('pao', 'red', 4, 5),
+                to: [4, 6, 'move']
+            },
+            {
+                piece: new Piece('pao', 'red', 4, 5),
+                to: [4, 7, 'move']
+            },
+            {
+                piece: new Piece('pao', 'red', 4, 5),
+                to: [4, 8, 'move']
+            },
+            {
+                piece: new Piece('pao', 'red', 4, 5),
+                to: [4, 9, 'move']
+            },
+            {
+                piece: new Piece('pao', 'red', 4, 5),
+                to: [3, 5, 'move']
+            },
+            {
+                piece: new Piece('pao', 'red', 4, 5),
+                to: [2, 5, 'move']
+            },
+            {
+                piece: new Piece('pao', 'red', 4, 5),
+                to: [1, 5, 'move']
+            },
+            {
+                piece: new Piece('pao', 'red', 4, 5),
+                to: [0, 5, 'move']
+            },
+        ]);
+    });
+
+    it('getAvailableSteps() for case 2 should ok', () => {
+        const game = new Game({ mode: 'L0' });
+        game.put('pao', 'red', 4, 5);
+        game.put('wang', 'red', 4, 9);
+        assert.deepStrictEqual(game.getAvailableSteps('red'), [
+            {
+                piece: new Piece('wang', 'red', 4, 9),
+                to: [4, 8, 'eat']
+            },
+            {
+                piece: new Piece('wang', 'red', 4, 9),
+                to: [5, 9, 'eat']
+            },
+            {
+                piece: new Piece('wang', 'red', 4, 9),
+                to: [3, 9, 'eat']
+            },
+            {
+                piece: new Piece('pao', 'red', 4, 5),
+                to: [4, 4, 'move']
+            },
+            {
+                piece: new Piece('pao', 'red', 4, 5),
+                to: [4, 3, 'move']
+            },
+            {
+                piece: new Piece('pao', 'red', 4, 5),
+                to: [4, 2, 'move']
+            },
+            {
+                piece: new Piece('pao', 'red', 4, 5),
+                to: [4, 1, 'move']
+            },
+            {
+                piece: new Piece('pao', 'red', 4, 5),
+                to: [4, 0, 'move']
+            },
+            {
+                piece: new Piece('pao', 'red', 4, 5),
+                to: [5, 5, 'move']
+            },
+            {
+                piece: new Piece('pao', 'red', 4, 5),
+                to: [6, 5, 'move']
+            },
+            {
+                piece: new Piece('pao', 'red', 4, 5),
+                to: [7, 5, 'move']
+            },
+            {
+                piece: new Piece('pao', 'red', 4, 5),
+                to: [8, 5, 'move']
+            },
+            {
+                piece: new Piece('pao', 'red', 4, 5),
+                to: [4, 6, 'move']
+            },
+            {
+                piece: new Piece('pao', 'red', 4, 5),
+                to: [4, 7, 'move']
+            },
+            {
+                piece: new Piece('pao', 'red', 4, 5),
+                to: [4, 8, 'move']
+            },
+            {
+                piece: new Piece('pao', 'red', 4, 5),
+                to: [3, 5, 'move']
+            },
+            {
+                piece: new Piece('pao', 'red', 4, 5),
+                to: [2, 5, 'move']
+            },
+            {
+                piece: new Piece('pao', 'red', 4, 5),
+                to: [1, 5, 'move']
+            },
+            {
+                piece: new Piece('pao', 'red', 4, 5),
+                to: [0, 5, 'move']
+            },
+        ]);
+    });
+
+    it('getCandidateSteps() should ok', () => {
+        const game = new Game({ mode: 'L0' });
+        game.put('wang', 'red', 4, 8);
+        game.put('shi', 'red', 5, 9);
+        assert.deepStrictEqual(game.getAvailableSteps('red'), [
+            {
+                piece: new Piece('shi', 'red', 5, 9),
+                to: [4, 8, 'protect']
+            },
+            {
+                piece: new Piece('wang', 'red', 4, 8),
+                to: [4, 7, 'eat']
+            },
+            {
+                piece: new Piece('wang', 'red', 4, 8),
+                to: [5, 8, 'eat']
+            },
+            {
+                piece: new Piece('wang', 'red', 4, 8),
+                to: [4, 9, 'eat']
+            },
+            {
+                piece: new Piece('wang', 'red', 4, 8),
+                to: [3, 8, 'eat']
+            }
+        ]);
+        assert.deepStrictEqual(game.getCandidateSteps('red'), [
+            {
+                piece: new Piece('wang', 'red', 4, 8),
+                to: [4, 7, 'eat']
+            },
+            {
+                piece: new Piece('wang', 'red', 4, 8),
+                to: [5, 8, 'eat']
+            },
+            {
+                piece: new Piece('wang', 'red', 4, 8),
+                to: [4, 9, 'eat']
+            },
+            {
+                piece: new Piece('wang', 'red', 4, 8),
+                to: [3, 8, 'eat']
+            }
         ]);
     });
 });

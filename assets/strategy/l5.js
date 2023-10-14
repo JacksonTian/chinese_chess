@@ -1,6 +1,12 @@
 import Game from "../game.js";
 import { random } from "../util.js";
 
+function caculateRisks(pieces) {
+    return pieces.reduceRight((pre, current) => {
+        return pre + Game.getWeight(current);
+    }, 0);
+}
+
 function findKillSteps(game, all) {
     return all.filter(({ to }) => {
         const [x, y] = to;
@@ -9,12 +15,30 @@ function findKillSteps(game, all) {
     });
 }
 
+function getRisks(game, player) {
+    const risks = [];
+    const pieces = game.getPieces(player);
+    // 获取对方候选步骤
+    const steps = game.getCandidateSteps(player === 'red' ? 'black' : 'red');
+    for (const piece of pieces) {
+        const riskSteps = steps.filter((step) => {
+            const [x, y] = step.to;
+            return piece.x == x && piece.y === y;
+        });
+
+        if (riskSteps.length > 0) {
+            risks.push(...riskSteps);
+        }
+    }
+    return risks;
+}
+
 function findThreatSteps(game, all, player) {
     return all.filter(({ piece, to }) => {
         const newGame = game.fork();
         newGame.tryMove([piece.x, piece.y], to);
         // 废弃走棋后，王会死的步骤
-        if (newGame.getRisks(player).find((d) => {
+        if (getRisks(newGame, player).find((d) => {
             const p = newGame.find(d.to[0], d.to[1]);
             if (p.role === 'wang') {
                 return true;
@@ -87,11 +111,11 @@ export default function run(game) {
         const [x, y] = to;
 
         const newGame = game.fork();
-        const preRisks = newGame.getRisks(player);
+        const preRisks = getRisks(newGame, player);
         console.log('before risks');
         console.log(preRisks);
         const protectSteps = newGame.getAvailableSteps(player);
-        const before = Game.caculateRisks(preRisks.map((d) => {
+        const before = caculateRisks(preRisks.map((d) => {
             return newGame.find(d.to[0], d.to[1]);
         }).filter((d) => {
             const s = protectSteps.filter((item) => {
@@ -104,7 +128,7 @@ export default function run(game) {
         }));
         newGame.tryMove([piece.x, piece.y], [x, y]);
         const income = Game.getWeight(newGame.eated);
-        const risks = newGame.getRisks(player);
+        const risks = getRisks(newGame, player);
 
         // 走棋之后王仍然处理威胁中
         const lose = risks.find((d) => {
@@ -116,7 +140,7 @@ export default function run(game) {
         });
 
         const protectSteps2 = newGame.getAvailableSteps(player);
-        const after = Game.caculateRisks(risks.map((d) => {
+        const after = caculateRisks(risks.map((d) => {
             return newGame.find(d.to[0], d.to[1]);
         }).filter((d) => {
             const protectSteps = protectSteps2.filter((item) => {

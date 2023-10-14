@@ -166,3 +166,110 @@ export function makeStep(find, newX, newY) {
         return `${name}${getX(player, find.x)}${direction}${end}`;
     }
 }
+
+function move(game, record) {
+    const [displayName, start, direction, end] = record.split('');
+    const role = getRoleByName(displayName);
+    if (game.counter % 2 === 0) {
+        const player = 'red';
+        // 红方走
+        const find = game.pieces.find((item) => {
+            return (item.role === role && item.player === player && getPosition(start) === item.x);
+        });
+        if (!find) {
+            throw new Error(`${record} not found`);
+        }
+        let x = find.x;
+        let y = find.y;
+        if (direction === '平') {
+            x = getPosition(end);
+        } else if (direction === '进') {
+            if (role === 'ma') {
+                if (Math.abs(find.x - getPosition(end)) === 2) {
+                    y = find.y - 1;
+                } else {
+                    y = find.y - 2;
+                }
+                x = getPosition(end);
+            } else if (role === 'xiang') {
+                x = getPosition(end);
+                y = find.y - 2;
+            } else if (role === 'shi') {
+                x = getPosition(end);
+                y = find.y - 1;
+            } else {
+                y = find.y - getDistance(end);
+            }
+        } else if (direction === '退') {
+            if (role === 'ma') {
+                if (Math.abs(find.x - getPosition(end)) === 2) {
+                    y = find.y + 1;
+                } else {
+                    y = find.y + 2;
+                }
+                x = getPosition(end);
+            } else if (role === 'xiang') {
+                y = find.y + 2;
+                x = getPosition(end);
+            } else if (role === 'shi') {
+                x = getPosition(end);
+                y = find.y + 1;
+            } else {
+                y = find.y + getDistance(end);
+            }
+        } else {
+            throw new Error(`${record} not found`);
+        }
+
+        game.tryMove([find.x, find.y], [x, y]);
+    } else {
+        // 黑方走
+        const player = 'black';
+        const find = game.pieces.find((item) => {
+            return (item.role === role && item.player === player && getPosition(start) === item.x);
+        });
+        if (!find) {
+            throw new Error(`${record} not found`);
+        }
+        let x = find.x;
+        let y = find.y;
+        if (direction === '进') {
+            if (role === 'ma') {
+                if (Math.abs(find.x - getPosition(end)) === 2) {
+                    y = find.y + 1;
+                } else {
+                    y = find.y + 2;
+                }
+                x = getPosition(end);
+            } else if (role === 'xiang') {
+                y = find.y + 2;
+                x = getPosition(end);
+            } else if (role === 'shi') {
+                x = getPosition(end);
+                y = find.y + 1;
+            } else {
+                y = find.y + Number(end);
+            }
+        } else if (direction === '退') {
+            if (role === 'ma') {
+                if (Math.abs(find.x - getPosition(end)) === 2) {
+                    y = find.y - 1;
+                } else {
+                    y = find.y - 2;
+                }
+                x = getPosition(end);
+            } else if (role === 'xiang') {
+                y = find.y - 2;
+                x = getPosition(end);
+            } else if (role === 'shi') {
+                x = getPosition(end);
+                y = find.y - 1;
+            } else {
+                y = find.y - Number(end);
+            }
+        } else if (direction === '平') {
+            x = getPosition(end);
+        }
+        game.tryMove([find.x, find.y], [x, y]);
+    }
+}

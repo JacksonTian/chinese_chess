@@ -4,14 +4,14 @@ import Piece from "../assets/piece.js";
 
 describe('game.js', () => {
     it('new game should ok', () => {
-        const game = new Game({ mode: 'L0' });
+        const game = new Game({  });
         assert.equal(game.pieces.length, 0);
         assert.equal(game.gameOver, false);
         assert.equal(game.counter, 0);
     });
 
     it('putPiece() should ok', () => {
-        const game = new Game({ mode: 'L0' });
+        const game = new Game({  });
         assert.equal(game.pieces.length, 0);
         assert.equal(game.gameOver, false);
         assert.equal(game.counter, 0);
@@ -20,7 +20,7 @@ describe('game.js', () => {
     });
 
     it('put() should ok', () => {
-        const game = new Game({ mode: 'L0' });
+        const game = new Game({  });
         assert.equal(game.pieces.length, 0);
         assert.equal(game.gameOver, false);
         assert.equal(game.counter, 0);
@@ -29,7 +29,7 @@ describe('game.js', () => {
     });
 
     it('initGame() should ok', () => {
-        const game = new Game({ mode: 'L0' });
+        const game = new Game({  });
         game.initGame();
         const redPieces = game.getPieces('red');
         assert.equal(redPieces.length, 16);
@@ -38,7 +38,7 @@ describe('game.js', () => {
     });
 
     it('find() should ok', () => {
-        const game = new Game({ mode: 'L0' });
+        const game = new Game({  });
         game.initGame();
         const redWang = game.find(4, 9);
         assert.equal(redWang.role, 'wang');
@@ -48,7 +48,7 @@ describe('game.js', () => {
     });
 
     it('fork() should ok', () => {
-        const game = new Game({ mode: 'L0' });
+        const game = new Game({  });
         game.initGame();
         const newGame = game.fork();
         assert.equal(newGame.pieces.length, 32);
@@ -56,7 +56,7 @@ describe('game.js', () => {
     });
 
     it('getCurrentPlayer() should ok', () => {
-        const game = new Game({ mode: 'L0' });
+        const game = new Game({  });
         assert.equal(game.getCurrentPlayer(), 'red');
         game.counter++;
         assert.equal(game.getCurrentPlayer(), 'black');
@@ -79,7 +79,7 @@ describe('game.js', () => {
     });
 
     it('getSteps() for che should ok', () => {
-        const game = new Game({ mode: 'L0' });
+        const game = new Game({  });
         game.put('che', 'red', 4, 5);
         const steps = game.getSteps('red', 'che', 4, 5);
         assert.deepStrictEqual(steps, [
@@ -142,7 +142,7 @@ describe('game.js', () => {
     });
 
     it('getSteps() for ma should ok', () => {
-        const game = new Game({ mode: 'L0' });
+        const game = new Game({  });
         game.put('ma', 'red', 4, 5);
         const steps = game.getSteps('red', 'ma', 4, 5);
         assert.deepStrictEqual(steps, [
@@ -168,7 +168,7 @@ describe('game.js', () => {
     });
 
     it('getSteps() for xiang should ok', () => {
-        const game = new Game({ mode: 'L0' });
+        const game = new Game({  });
         game.put('xiang', 'red', 4, 5);
         // 象眼正常的情况
         const steps = game.getSteps('red', 'xiang', 4, 7);
@@ -208,7 +208,7 @@ describe('game.js', () => {
     });
 
     it('getSteps() for shi red should ok', () => {
-        const game = new Game({ mode: 'L0' });
+        const game = new Game({  });
         game.put('shi', 'red', 4, 8);
 
         assert.deepStrictEqual(game.getSteps('red', 'shi', 4, 8), [
@@ -218,7 +218,7 @@ describe('game.js', () => {
             [3, 7, 'eat'],
         ]);
 
-        const newGame = new Game({ mode: 'L0' });
+        const newGame = new Game({  });
         newGame.put('shi', 'red', 3, 7);
         assert.deepStrictEqual(newGame.getSteps('red', 'shi', 3, 7), [
             [4, 8, 'eat']
@@ -241,7 +241,7 @@ describe('game.js', () => {
     });
 
     it('getSteps() for shi black should ok', () => {
-        const game = new Game({ mode: 'L0' });
+        const game = new Game({  });
         game.put('shi', 'black', 4, 1);
 
         assert.deepStrictEqual(game.getSteps('black', 'shi', 4, 1), [
@@ -251,7 +251,7 @@ describe('game.js', () => {
             [3, 0, 'eat'],
         ]);
 
-        const newGame = new Game({ mode: 'L0' });
+        const newGame = new Game({  });
         newGame.put('shi', 'red', 5, 0);
         assert.deepStrictEqual(newGame.getSteps('black', 'shi', 5, 0), [
             [4, 1, 'eat']
@@ -274,7 +274,7 @@ describe('game.js', () => {
     });
 
     it('getSteps() for wang red should ok', () => {
-        const game = new Game({ mode: 'L0' });
+        const game = new Game({  });
         game.put('wang', 'red', 4, 8);
 
         assert.deepStrictEqual(game.getSteps('red', 'wang', 4, 8), [
@@ -284,7 +284,7 @@ describe('game.js', () => {
             [3, 8, 'eat'],
         ]);
 
-        const newGame = new Game({ mode: 'L0' });
+        const newGame = new Game({  });
         newGame.put('wang', 'red', 5, 7);
         assert.deepStrictEqual(newGame.getSteps('red', 'wang', 5, 7), [
             [5, 8, 'eat'],
@@ -311,7 +311,7 @@ describe('game.js', () => {
     });
 
     it('getSteps() for wang black should ok', () => {
-        const game = new Game({ mode: 'L0' });
+        const game = new Game({  });
         game.put('wang', 'black', 4, 1);
         assert.deepStrictEqual(game.getSteps('black', 'wang', 4, 1), [
             [4, 0, 'eat'],
@@ -320,7 +320,7 @@ describe('game.js', () => {
             [3, 1, 'eat'],
         ]);
 
-        const newGame = new Game({ mode: 'L0' });
+        const newGame = new Game({  });
         newGame.put('wang', 'black', 5, 0);
         assert.deepStrictEqual(newGame.getSteps('black', 'wang', 5, 0), [
             [5, 1, 'eat'],
@@ -347,7 +347,7 @@ describe('game.js', () => {
     });
 
     it('getSteps() for wang vs wang should ok', () => {
-        const game = new Game({ mode: 'L0' });
+        const game = new Game({  });
         game.put('wang', 'black', 4, 1);
         game.put('wang', 'red', 4, 8);
         assert.deepStrictEqual(game.getSteps('black', 'wang', 4, 1), [
@@ -368,7 +368,7 @@ describe('game.js', () => {
     });
 
     it('getSteps() for pao should ok', () => {
-        const game = new Game({ mode: 'L0' });
+        const game = new Game({  });
         game.put('pao', 'red', 4, 8);
         assert.deepStrictEqual(game.getSteps('red', 'pao', 4, 8), [
             [4, 7, 'move'],
@@ -392,7 +392,7 @@ describe('game.js', () => {
     });
 
     it('getSteps() for pao case 2 should ok', () => {
-        const game = new Game({ mode: 'L0' });
+        const game = new Game({  });
         game.put('pao', 'red', 4, 5);
         game.put('pao', 'red', 4, 3);
         game.put('pao', 'red', 6, 5);
@@ -407,7 +407,7 @@ describe('game.js', () => {
     });
 
     it('getSteps() for pao case 3 should ok', () => {
-        const game = new Game({ mode: 'L0' });
+        const game = new Game({  });
         game.put('pao', 'red', 4, 5);
         game.put('pao', 'red', 4, 3);
         game.put('pao', 'black', 4, 2);
@@ -430,7 +430,7 @@ describe('game.js', () => {
     });
 
     it('getSteps() for pao case 4 should ok', () => {
-        const game = new Game({ mode: 'L0' });
+        const game = new Game({  });
         game.put('pao', 'red', 4, 5);
         game.put('pao', 'red', 4, 3);
         game.put('pao', 'red', 4, 2);
@@ -453,7 +453,7 @@ describe('game.js', () => {
     });
 
     it('getSteps() for bing should ok', () => {
-        const game = new Game({ mode: 'L0' });
+        const game = new Game({  });
         game.put('bing', 'red', 4, 5);
 
         assert.deepStrictEqual(game.getSteps('red', 'bing', 4, 5), [
@@ -484,14 +484,14 @@ describe('game.js', () => {
     });
 
     it('getCandidateSteps() should ok', () => {
-        const game = new Game({ mode: 'L0' });
+        const game = new Game({  });
         game.initGame();
         const stepsForChe = game.getSteps('red', 'che', 0, 9);
         assert.equal(stepsForChe.length, 4);
     });
 
     it('getAvailableSteps() for case 1 should ok', () => {
-        const game = new Game({ mode: 'L0' });
+        const game = new Game({  });
         game.put('pao', 'red', 4, 5);
         assert.deepStrictEqual(game.getAvailableSteps('red'), [
             {
@@ -566,7 +566,7 @@ describe('game.js', () => {
     });
 
     it('getAvailableSteps() for case 2 should ok', () => {
-        const game = new Game({ mode: 'L0' });
+        const game = new Game({  });
         game.put('pao', 'red', 4, 5);
         game.put('wang', 'red', 4, 9);
         assert.deepStrictEqual(game.getAvailableSteps('red'), [
@@ -650,7 +650,7 @@ describe('game.js', () => {
     });
 
     it('getCandidateSteps() should ok', () => {
-        const game = new Game({ mode: 'L0' });
+        const game = new Game({  });
         game.put('wang', 'red', 4, 8);
         game.put('shi', 'red', 5, 9);
         assert.deepStrictEqual(game.getAvailableSteps('red'), [
@@ -693,5 +693,43 @@ describe('game.js', () => {
                 to: [3, 8, 'eat']
             }
         ]);
+    });
+
+    it('tryMove() case 1 should ok', () => {
+        const game = new Game({});
+        game.initGame();
+        // 无可移动棋子
+        assert.equal(game.tryMove([4, 7], [4, 6]), false);
+        // 红方轮次，仅可移动红棋
+        assert.equal(game.tryMove([0, 0], [4, 6]), false);
+        // 不可吃我方棋子
+        assert.equal(game.tryMove([4, 9], [5, 9]), false);
+        // 非有效步骤
+        assert.equal(game.tryMove([4, 9], [4, 7]), false);
+        // 有效步骤
+        const wang = game.find(4, 9);
+        assert.strictEqual(wang.x, 4);
+        assert.strictEqual(wang.y, 9);
+        assert.equal(game.tryMove([4, 9], [4, 8]), true);
+        assert.strictEqual(wang.x, 4);
+        assert.strictEqual(wang.y, 8);
+        assert.strictEqual(game.eated, null);
+        // 轮到黑方
+        // 黑方轮次，仅可移动黑棋
+        assert.equal(game.tryMove([4, 8], [4, 9]), false);
+        // 黑炮吃红马
+        assert.equal(game.tryMove([1, 2], [1, 9]), true);
+        assert.deepStrictEqual(game.eated, new Piece('ma', 'red', 1, 9));
+    });
+
+    it('tryMove() for game over should ok', () => {
+        const game = new Game({});
+        game.put('wang', 'black', 4, 0);
+        game.put('wang', 'red', 3, 9);
+        assert.equal(game.tryMove([3, 9], [4, 9]), true);
+        assert.equal(game.tryMove([4, 0], [4, 9]), true);
+        assert.equal(game.gameOver, true);
+        // game overed
+        assert.equal(game.tryMove([4, 0], [4, 9]), false);
     });
 });

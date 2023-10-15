@@ -3,8 +3,9 @@
 import { sleep } from "./util.js";
 import Game from "./game.js";
 import GameRender from "./render.js";
+import Engine from "./engine.js";
 
-const game = new Game({ mode: 'L0' });
+const game = new Game();
 game.initGame();
 
 // // 钓鱼马绝杀
@@ -89,6 +90,7 @@ game.initGame();
 // game.put('pao', 'red', 5, 4);
 
 const render = new GameRender(document.querySelector('#main'), game);
+render.setEngine(new Engine({mode: 'L5'}));
 render.render();
 
 // async function run() {

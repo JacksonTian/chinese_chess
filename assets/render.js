@@ -27,12 +27,17 @@ export default class GameRender {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
         this.props = props;
-
+        this.game = game;
         this.canvas.addEventListener('mousedown', (e) => {
             this.onMouseDown(e);
         });
-        this.game = game;
+
         this.selected = null;
+        this.engine = null;
+    }
+
+    setEngine(engine) {
+        this.engine = engine;
     }
 
     /**
@@ -60,8 +65,10 @@ export default class GameRender {
             this.selected = null;
             if (moved) {
                 this.render();
-                // 黑方自动走棋
-                this.move();
+                if (this.engine) {
+                    this.engine.autoMove(this.game);
+                    this.render();
+                }
             }
         } else {
             if (this.game.find(x, y)) {
@@ -374,7 +381,11 @@ export default class GameRender {
     }
 
     move() {
-        this.game.autoMove();
+        if (!this.engine) {
+            throw new Error('未启用引擎托管');
+        }
+
+        this.engine.autoMove(this.game);
         this.render();
     }
 }

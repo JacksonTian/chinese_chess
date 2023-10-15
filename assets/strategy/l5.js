@@ -182,11 +182,9 @@ export default function run(game) {
         return true;
     });
 
-    // if (steps.length === 0) {
-    //     alert(`${opposePlayer} win the game!`);
-    //     this.gameOver = true;
-    //     return;
-    // }
+    if (steps.length === 0) {
+        return random(all);
+    }
 
     steps.sort((a, b) => {
         if (a.after - a.income < b.after - b.income) {

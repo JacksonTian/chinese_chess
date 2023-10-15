@@ -6,14 +6,13 @@ import runL4 from "./strategy/l4.js";
 import runL5 from "./strategy/l5.js";
 
 export default class Engine {
-    constructor(game, options = {
+    constructor(options = {
         mode: 'L0',
     }) {
-        this.game = game;
         this.mode = options.mode;
     }
 
-    autoMove() {
+    autoMove(game) {
         const strategies = {
             L0: runL0,
             L1: runL1,
@@ -24,8 +23,8 @@ export default class Engine {
         };
 
         console.log('======================');
-        const step = strategies[this.mode](this.game);
+        const step = strategies[this.mode](game);
         const {x, y} = step.piece;
-        return this.game.tryMove([x, y], step.to);
+        return game.tryMove([x, y], step.to);
     }
 }

@@ -535,7 +535,9 @@ export default class Game {
 
         const [oldX, oldY] = from;
         const [newX, newY] = to;
-        console.log(`from(${oldX}, ${oldY}) to(${newX}, ${newY})`);
+        if (!this.simulate) {
+            console.log(`from (${oldX}, ${oldY}) to (${newX}, ${newY})`);
+        }
 
         const find = this.find(oldX, oldY);
         if (!find) {
@@ -579,7 +581,10 @@ export default class Game {
         });
 
         if (index !== -1) {
-            console.log('发生吃兵');
+            if (!this.simulate) {
+                console.log('发生吃兵');
+            }
+
             this.eated = this.pieces.find((item) => {
                 return (item.player !== find.player && item.x === newX && item.y === newY);
             });
@@ -596,7 +601,9 @@ export default class Game {
 
         find.x = newX;
         find.y = newY;
-        console.log(`${find.player} ${find.role}(${oldX}, ${oldY}) to (${newX}, ${newY})`);
+        if (!this.simulate) {
+            console.log(`${find.player} ${find.role}(${oldX}, ${oldY}) to (${newX}, ${newY})`);
+        }
         this.counter++;
         return true;
     }
